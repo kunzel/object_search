@@ -12,9 +12,16 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
+  <build_depend>rospy</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>octomap</build_depend>
    
+  <run_depend>rospy</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>octomap</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>nav_msgs</run_depend>
+  <run_depend>smach</run_depend>  
+  <run_depend>smach_ros</run_depend>
+  <run_depend>nav_goals_msgs</run_depend>
 </package>
