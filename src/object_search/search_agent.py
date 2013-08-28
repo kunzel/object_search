@@ -6,10 +6,13 @@ import smach_ros
 import sys
 import getopt
 import random
+import json
 
 import actionlib
 from actionlib_msgs.msg import *
 from move_base_msgs.msg import *
+
+from std_msgs.msg import String
 
 from nav_goals_msgs.srv import NavGoals
 from geometry_msgs.msg import Polygon
@@ -69,6 +72,7 @@ class SearchAgent(KBAgent):
                                                  'search_in_progress': 'SearchMethod', 
                                                  'preempted':'preempted'},
                                    remapping={'obj':'sm_object',
+                                              'obj_list':'sm_obj_list',
                                               'max_poses':'sm_max_poses',
                                               'max_time':'sm_max_time'})
 
@@ -102,7 +106,8 @@ class SearchAgent(KBAgent):
             smach.StateMachine.add('Perceive', Perceive(), 
                                    {'succeeded':'SearchMonitor',
                                     'aborted':'aborted',
-                                    'preempted':'preempted'})
+                                    'preempted':'preempted'},
+                                   remapping={'obj_list':'sm_obj_list'})
 
         
         return self.sm
@@ -113,6 +118,7 @@ class SearchAgent(KBAgent):
         self.sm.userdata.sm_object    = obj
         self.sm.userdata.sm_max_time  = 120
         self.sm.userdata.sm_max_poses = 10
+        self.sm.userdata.sm_obj_list  = []
 
 
 112#______________________________________________________________________________
@@ -128,7 +134,7 @@ class SearchMonitor (smach.State):
     def __init__(self):
         smach.State.__init__(self,
                              outcomes=['search_succeeded','search_aborted','search_in_progress','preempted'],
-                             input_keys=['obj','max_time','max_poses'],
+                             input_keys=['obj','obj_list','max_time','max_poses'],
                              output_keys=['obj_found','obj_pose','searched_poses','time','exceeded_max_time','exceeded_max_poses'])
         self.first_call = True
 
@@ -152,10 +158,16 @@ class SearchMonitor (smach.State):
         self.end = rospy.Time.now().secs
         time = self.end - self.start
         userdata.time = time
-        
-        found = int(random.uniform(1, 300))
+
+
         # check whether obj was found
-        if found == 1: 
+        found = False
+
+        for obj_desc in userdata.obj_list:
+            if obj_desc.get('name') == userdata.obj:
+                found = True
+
+        if found == True:
             userdata.obj_found = True
             # Todo: set pose
             userdata.obj_pose =  Pose() 
@@ -220,10 +232,36 @@ class Perceive (smach.State):
 
     def __init__(self):
         smach.State.__init__(self,
-                             outcomes=['succeeded', 'aborted', 'preempted'])
+                             outcomes=['succeeded', 'aborted', 'preempted'],
+                             output_keys=['obj_list'])
+
+        rospy.Subscriber("semcam", String, self.callback)
+
+        self.obj_list = []
+        self.active = False
+
+    def callback(self,data):
+        if self.active == True and self.first_call == True:
+            self.first_call = False
+            obj_list = json.loads(data.data)
+            if len(obj_list) == 0:
+                rospy.loginfo("Nothing perceived")
+            for obj_desc in obj_list:
+                rospy.loginfo("Perceived: %s" % obj_desc.get('name'))
+
+            self.obj_list = obj_list
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
+        self.active = True
+        self.first_call = True
+
+        # wait for some time to read from the topic
+        # TODO: replace with a service call
+        rospy.sleep(3)
+        userdata.obj_list = self.obj_list
+
+        self.active = False
         return 'succeeded'
 
     
@@ -236,7 +274,7 @@ class Usage(Exception):
 
 def help_msg():
     return """
-  Usage: searcher.py [-h] <object> <method>
+  Usage: search_agent.py [-h] <object> <method>
 
     object        type of the object
     method        search method: uninformed, informed-planes, informed-qsr 
@@ -256,10 +294,10 @@ def main(argv=None):
         if ('-h','') in opts or ('--help', '') in opts: #len(args) != 2 or
             raise Usage(help_msg())
 
-b        print >>sys.stderr, args
+        print >>sys.stderr, args
         
         # create ros node
-        rospy.init_node("searcher_node")
+        rospy.init_node("search_agent_node")
         
         # create an agent
         agent = SearchAgent(args[1])
