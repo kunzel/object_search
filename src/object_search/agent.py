@@ -43,11 +43,11 @@ class Agent (Thing):
         self.sm._state_transitioning_lock = threading.Lock()
         
         
-class KBAgent (Agent):
-    """Agent that uses a knowledge base"""
-    def init_kb(self):
-        self.kb = dict()
-    def tell(self, key, val):
-        self.kb[key] = val 
-    def ask(self, key):
-        return self.kb[key]
+# class KBAgent (Agent):
+#     """Agent that uses a knowledge base"""
+#     def init_kb(self):
+#         self.kb = dict()
+#     def tell(self, key, val):
+#         self.kb[key] = val 
+#     def ask(self, key):
+#         return self.kb[key]
