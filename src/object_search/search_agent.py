@@ -119,13 +119,15 @@ class SearchAgent(Agent):
 
         # set values from parameter server
         self.sm.userdata.sm_min_objs  = 1
-        self.sm.userdata.sm_max_objs =  2
+        self.sm.userdata.sm_max_objs =  1
         self.sm.userdata.sm_max_time  = 120
-        self.sm.userdata.sm_max_poses = 10
+        self.sm.userdata.sm_max_poses = 5
 
         # initialize obj list
         self.sm.userdata.sm_obj_list  = []
 
+    def get_sm_userdata(self):
+        return self.sm.userdata
 
 112#______________________________________________________________________________
 # behavior
@@ -180,8 +182,6 @@ class SearchMonitor (smach.State):
                     
                 userdata.obj_descs = obj_descs
                     
-                rospy.loginfo('object desc: %s', userdata.obj_desc)
-                rospy.loginfo('total time: %s', time)
                 rospy.loginfo('searched poses: %s', self.count)
                 return 'search_succeeded'
 
@@ -191,7 +191,6 @@ class SearchMonitor (smach.State):
             if self.count >= userdata.max_poses:
                 userdata.exceeded_max_poses = True
 
-            rospy.loginfo('total time: %s', time)
             rospy.loginfo('searched poses: %s', self.count)
             return 'search_aborted'
         
@@ -217,8 +216,6 @@ class SearchMonitor (smach.State):
 
             userdata.obj_descs = obj_descs
 
-            rospy.loginfo('object desc: %s', userdata.obj_desc)
-            rospy.loginfo('total time: %s', time)
             rospy.loginfo('searched poses: %s', self.count)
             return 'search_succeeded'
 
@@ -235,15 +232,12 @@ class SearchMonitor (smach.State):
                     obj_descs.append(self.found_objs[key])
                     
                 userdata.obj_descs = obj_descs
-                    
-                rospy.loginfo('object desc: %s', userdata.obj_desc)
-                rospy.loginfo('total time: %s', time)
+
                 rospy.loginfo('searched poses: %s', self.count - 1)
                 return 'search_succeeded'
             
             userdata.exceeded_max_poses = True
 
-            rospy.loginfo('total time: %s', time)
             rospy.loginfo('searched poses: %s', self.count - 1)
             return 'search_aborted'
 
@@ -359,8 +353,17 @@ def main(argv=None):
         # run agent's state machine with or without introspection server
         # outcome = agent.execute_sm()
         outcome = agent.execute_sm_with_introspection()
-        
-        rospy.spin()
+
+        userdata = agent.get_sm_userdata()
+
+        rospy.loginfo('obj desc: %s', userdata.sm_obj_desc)
+        rospy.loginfo('obj found: %s ' % userdata.obj_found)
+        rospy.loginfo('obj descs: %s ' % userdata.obj_descs)
+        rospy.loginfo('searched_poses: %s ' % len(userdata.searched_poses))
+        rospy.loginfo('time (sec)): %s ' % userdata.time)
+        rospy.loginfo('exceeded_max_time: %s ' % userdata.exceeded_max_time)
+        rospy.loginfo('exceeded_max_poses: %s ' % userdata.exceeded_max_poses)
+
         
     except Usage, err:
         print >>sys.stderr, err.msg
