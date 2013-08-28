@@ -8,25 +8,23 @@ import getopt
 import random
 import json
 
-import actionlib
-from actionlib_msgs.msg import *
-from move_base_msgs.msg import *
-
-from std_msgs.msg import String
-
-from nav_goals_msgs.srv import NavGoals
-from geometry_msgs.msg import Polygon
-from geometry_msgs.msg import Pose
-from agent import KBAgent
+from agent import Agent
 
 from search_methods import UninformedSearch_Random
 from search_methods import InformedSearch_SupportingPlanes
 from search_methods import InformedSearch_QSR
 
+import actionlib
+from actionlib_msgs.msg import *
+from move_base_msgs.msg import *
+
+from std_msgs.msg import String
+from geometry_msgs.msg import Polygon
+from geometry_msgs.msg import Pose
+from nav_goals_msgs.srv import NavGoals
 
 MOVE_BASE_EXEC_TIMEOUT=rospy.Duration(600.0)
 MOVE_BASE_PREEMPT_TIMEOUT=rospy.Duration(10.0)
-
 
 #callback that build the move_base goal, from the input data        
 def move_base_goal_cb(userdata,goal):
@@ -39,7 +37,7 @@ def move_base_goal_cb(userdata,goal):
     return next_goal
 
 
-class SearchAgent(KBAgent):
+class SearchAgent(Agent):
 
     """
     Definition of a search-agent.
@@ -47,11 +45,11 @@ class SearchAgent(KBAgent):
     """
     def __init__(self, search_method):
 
-        if search_method == 'is_sp':
+        if search_method == 'support':
             self.search_method = InformedSearch_SupportingPlanes()
-        elif search_method == 'is_qsr':
+        elif search_method == 'qsr':
             self.search_method = InformedSearch_QSR()
-        else: # 'us_rand'
+        else: # 'rand'
             poly = Polygon() # empty polygon -> consider whole map
             self.search_method = UninformedSearch_Random(0.7, poly)
 
@@ -71,10 +69,13 @@ class SearchAgent(KBAgent):
                                                  'search_aborted':   'aborted',
                                                  'search_in_progress': 'SearchMethod', 
                                                  'preempted':'preempted'},
-                                   remapping={'obj':'sm_object',
+                                   remapping={'obj_desc':'sm_obj_desc',
                                               'obj_list':'sm_obj_list',
+                                              'min_objs':'sm_min_objs',
+                                              'max_objs':'sm_max_objs',
                                               'max_poses':'sm_max_poses',
-                                              'max_time':'sm_max_time'})
+                                              'max_time':'sm_max_time',
+                                              })
 
             
             smach.StateMachine.add('SearchMethod', self.search_method, 
@@ -112,12 +113,17 @@ class SearchAgent(KBAgent):
         
         return self.sm
 
-    def set_sm_userdata(self, obj):
+    def set_sm_userdata(self, obj_desc):
         """Set userdata for state machine."""
-        self.init_kb()
-        self.sm.userdata.sm_object    = obj
+        self.sm.userdata.sm_obj_desc  = json.loads(obj_desc)
+
+        # set values from parameter server
+        self.sm.userdata.sm_min_objs  = 1
+        self.sm.userdata.sm_max_objs =  2
         self.sm.userdata.sm_max_time  = 120
         self.sm.userdata.sm_max_poses = 10
+
+        # initialize obj list
         self.sm.userdata.sm_obj_list  = []
 
 
@@ -134,16 +140,17 @@ class SearchMonitor (smach.State):
     def __init__(self):
         smach.State.__init__(self,
                              outcomes=['search_succeeded','search_aborted','search_in_progress','preempted'],
-                             input_keys=['obj','obj_list','max_time','max_poses'],
-                             output_keys=['obj_found','obj_pose','searched_poses','time','exceeded_max_time','exceeded_max_poses'])
+                             input_keys=['obj_desc','obj_list','min_objs','max_objs','max_time','max_poses'],
+                             output_keys=['obj_found','obj_descs','searched_poses','time','exceeded_max_time','exceeded_max_poses'])
         self.first_call = True
+        self.found_objs = dict()
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
         # rospy.loginfo('Searching for %s' % obj )
         
         userdata.obj_found = False
-        userdata.obj_pose  = Pose()
+        userdata.obj_descs  = [] 
         userdata.searched_poses  = []
         userdata.time = 0
         userdata.exceeded_max_time = False
@@ -159,26 +166,26 @@ class SearchMonitor (smach.State):
         time = self.end - self.start
         userdata.time = time
 
-
-        # check whether obj was found
-        found = False
-
-        for obj_desc in userdata.obj_list:
-            if obj_desc.get('name') == userdata.obj:
-                found = True
-
-        if found == True:
-            userdata.obj_found = True
-            # Todo: set pose
-            userdata.obj_pose =  Pose() 
-
-            rospy.loginfo('object found: %s', userdata.obj)
-            rospy.loginfo('total time: %s', time)
-            rospy.loginfo('searched poses: %s', self.count)
-            return 'search_succeeded'
-
-        # check for max_time 
+        # check for max_time, if exceeded stop immediately 
         if time >= userdata.max_time:
+            # check whether we've already found enough objects
+            # if yes, the search was successful
+            if len(self.found_objs) >= userdata.min_objs:
+                userdata.obj_found = True
+
+                obj_descs = []
+                for key in self.found_objs:
+                    rospy.loginfo('Found obj: %s', self.found_objs[key])
+                    obj_descs.append(self.found_objs[key])
+                    
+                userdata.obj_descs = obj_descs
+                    
+                rospy.loginfo('object desc: %s', userdata.obj_desc)
+                rospy.loginfo('total time: %s', time)
+                rospy.loginfo('searched poses: %s', self.count)
+                return 'search_succeeded'
+
+            # if not, abort search
             userdata.exceeded_max_time = True
             # also check for max_poses
             if self.count >= userdata.max_poses:
@@ -188,15 +195,59 @@ class SearchMonitor (smach.State):
             rospy.loginfo('searched poses: %s', self.count)
             return 'search_aborted'
         
+        # check whether obj was found at last pose
+        found = False
+        for obj_desc in userdata.obj_list:
+            for key in userdata.obj_desc:
+                # Todo: match object descriptions in different ways:
+                # partial match, full match, contradicting match (one feature matches whereas another dont)
+                if key in obj_desc:
+                    if obj_desc.get(key) == userdata.obj_desc.get(key):
+                        self.found_objs[obj_desc.get('name')] = obj_desc
+                        #found = True
+                        
+        # stop search if we've found enough objs
+        if len(self.found_objs) >= userdata.max_objs:
+            userdata.obj_found = True
+
+            obj_descs = []
+            for key in self.found_objs:
+                rospy.loginfo('Found obj: %s', self.found_objs[key])
+                obj_descs.append(self.found_objs[key])
+
+            userdata.obj_descs = obj_descs
+
+            rospy.loginfo('object desc: %s', userdata.obj_desc)
+            rospy.loginfo('total time: %s', time)
+            rospy.loginfo('searched poses: %s', self.count)
+            return 'search_succeeded'
+
         # check for max_poses
         self.count += 1
         if self.count >  userdata.max_poses:
+            # check whether we already found enough objects
+            if len(self.found_objs) >= userdata.min_objs:
+                userdata.obj_found = True
+
+                obj_descs = []
+                for key in self.found_objs:
+                    rospy.loginfo('Found obj: %s', self.found_objs[key])
+                    obj_descs.append(self.found_objs[key])
+                    
+                userdata.obj_descs = obj_descs
+                    
+                rospy.loginfo('object desc: %s', userdata.obj_desc)
+                rospy.loginfo('total time: %s', time)
+                rospy.loginfo('searched poses: %s', self.count - 1)
+                return 'search_succeeded'
+            
             userdata.exceeded_max_poses = True
 
             rospy.loginfo('total time: %s', time)
             rospy.loginfo('searched poses: %s', self.count - 1)
             return 'search_aborted'
 
+        
         return 'search_in_progress'
 
 
