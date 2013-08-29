@@ -43,13 +43,15 @@ class SearchAgent(Agent):
     Definition of a search-agent.
 
     """
-    def __init__(self, search_method):
+    def __init__(self):
 
+        search_method = rospy.get_param('search_method','random')
+        
         if search_method == 'support':
             self.search_method = InformedSearch_SupportingPlanes()
         elif search_method == 'qsr':
             self.search_method = InformedSearch_QSR()
-        else: # 'rand'
+        else: # 'random'
             poly = Polygon() # empty polygon -> consider whole map
             self.search_method = UninformedSearch_Random(0.7, poly)
 
@@ -113,17 +115,25 @@ class SearchAgent(Agent):
         
         return self.sm
 
-    def set_sm_userdata(self, obj_desc):
+    def set_sm_userdata(self):
         """Set userdata for state machine."""
+        rospy.loginfo('Getting parameters from server')
+
+        obj_desc = rospy.get_param('obj_desc','{"type" : "Bar"}')
         self.sm.userdata.sm_obj_desc  = json.loads(obj_desc)
 
-        # set values from parameter server
-        self.sm.userdata.sm_min_objs  = 1
-        self.sm.userdata.sm_max_objs =  1
-        self.sm.userdata.sm_max_time  = 120
-        self.sm.userdata.sm_max_poses = 5
+        self.sm.userdata.sm_min_objs  = rospy.get_param('min_objs',1)
+        self.sm.userdata.sm_max_objs =  rospy.get_param('max_objs',1)
+        self.sm.userdata.sm_max_time  = rospy.get_param('max_time', 120)
+        self.sm.userdata.sm_max_poses = rospy.get_param('max_poses', 10)
 
-        # initialize obj list
+        rospy.loginfo("Search for %s", self.sm.userdata.sm_obj_desc)
+        rospy.loginfo("min_objs: %s", self.sm.userdata.sm_min_objs)
+        rospy.loginfo("max_objs: %s", self.sm.userdata.sm_max_objs)
+        rospy.loginfo("max_tim: %s", self.sm.userdata.sm_max_time)
+        rospy.loginfo("max_poses: %s", self.sm.userdata.sm_max_poses)
+        
+        # initialize empty obj list
         self.sm.userdata.sm_obj_list  = []
 
     def get_sm_userdata(self):
@@ -342,13 +352,13 @@ def main(argv=None):
         print >>sys.stderr, args
         
         # create ros node
-        rospy.init_node("search_agent_node")
+        rospy.init_node("search_agent")
         
         # create an agent
-        agent = SearchAgent(args[1])
+        agent = SearchAgent()
 
         # set userdata: object type, ...
-        agent.set_sm_userdata(args[0])
+        agent.set_sm_userdata()
         
         # run agent's state machine with or without introspection server
         # outcome = agent.execute_sm()
