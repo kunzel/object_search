@@ -48,7 +48,8 @@ class SearchAgent(Agent):
         search_method = rospy.get_param('search_method','random')
         
         if search_method == 'support':
-            self.search_method = InformedSearch_SupportingPlanes()
+            poly = Polygon() # empty polygon -> consider whole map
+            self.search_method = InformedSearch_SupportingPlanes(0.7, poly)
         elif search_method == 'qsr':
             self.search_method = InformedSearch_QSR()
         else: # 'random'
@@ -84,7 +85,9 @@ class SearchAgent(Agent):
                                    transitions={'succeeded':'GoToPose',
                                                 'aborted':'aborted',
                                                 'preempted':'preempted'},
-                                   remapping={'pose_output':'sm_pose_data'})
+                                   remapping={'obj_desc':'sm_obj_desc',
+                                              'obj_list':'sm_obj_list',
+                                              'pose_output':'sm_pose_data'})
 
 
             smach.StateMachine.add('GoToPose',
@@ -130,7 +133,7 @@ class SearchAgent(Agent):
         rospy.loginfo("Search for %s", self.sm.userdata.sm_obj_desc)
         rospy.loginfo("min_objs: %s", self.sm.userdata.sm_min_objs)
         rospy.loginfo("max_objs: %s", self.sm.userdata.sm_max_objs)
-        rospy.loginfo("max_tim: %s", self.sm.userdata.sm_max_time)
+        rospy.loginfo("max_time: %s", self.sm.userdata.sm_max_time)
         rospy.loginfo("max_poses: %s", self.sm.userdata.sm_max_poses)
         
         # initialize empty obj list
