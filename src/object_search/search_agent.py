@@ -196,6 +196,13 @@ class SearchMonitor (smach.State):
                 userdata.obj_descs = obj_descs
                     
                 rospy.loginfo('searched poses: %s', self.count)
+
+                # nevertheless set flags 
+                userdata.exceeded_max_time = True
+                # also check for max_poses
+                if self.count >= userdata.max_poses:
+                    userdata.exceeded_max_poses = True
+
                 return 'search_succeeded'
 
             # if not, abort search
@@ -247,6 +254,10 @@ class SearchMonitor (smach.State):
                 userdata.obj_descs = obj_descs
 
                 rospy.loginfo('searched poses: %s', self.count - 1)
+
+                # nevertheless set flag
+                userdata.exceeded_max_poses = True
+                
                 return 'search_succeeded'
             
             userdata.exceeded_max_poses = True
@@ -372,7 +383,7 @@ def main(argv=None):
         rospy.loginfo('obj desc: %s', userdata.sm_obj_desc)
         rospy.loginfo('obj found: %s ' % userdata.obj_found)
         rospy.loginfo('obj descs: %s ' % userdata.obj_descs)
-        rospy.loginfo('searched_poses: %s ' % len(userdata.searched_poses))
+#        rospy.loginfo('searched_poses: %s ' % len(userdata.searched_poses))
         rospy.loginfo('time (sec)): %s ' % userdata.time)
         rospy.loginfo('exceeded_max_time: %s ' % userdata.exceeded_max_time)
         rospy.loginfo('exceeded_max_poses: %s ' % userdata.exceeded_max_poses)
