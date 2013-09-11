@@ -2,9 +2,11 @@
   <!-- declare args to be passed in -->
   <arg name="obj" default='{"type" : "Foo"}'/> 
   <arg name="method" default='random'/> 
+  <arg name="robot" default='sim'/> 
 
   <param name="obj_desc" type="string" value="$(arg obj)" />
   <param name="search_method" type="string" value="$(arg method)" />    
+  <param name="robot" type="string" value="$(arg robot)" />    
   <param name="min_objs" type="int" value="1" />
   <param name="max_objs" type="int" value="1" />
   <param name="max_time" type="int" value="120" />
