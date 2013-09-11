@@ -72,7 +72,7 @@ int r_func(float x)
   
   float value = trapezoidal_shaped_func(a,b,c,d,x);
   
-  return value;
+  return floor(value * 255);
 }
 
 int g_func(float x)
@@ -86,7 +86,7 @@ int g_func(float x)
   
   float value = trapezoidal_shaped_func(a,b,c,d,x);
   
-  return value;
+  return floor(value * 255);
 }
 
 int b_func(float x)
@@ -100,7 +100,7 @@ int b_func(float x)
   
   float value = trapezoidal_shaped_func(a,b,c,d,x);
   
-  return value;
+  return floor(value * 255);
 }
 
 

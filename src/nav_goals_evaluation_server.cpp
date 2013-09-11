@@ -419,7 +419,7 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
                   // QSR 
                   weight +=   10 * (normal_dist_2d(p3d.x(), p3d.y(), -1.0 , 0.2, 4.7 , 0.1));
                   weight +=   10 * (normal_dist_2d(p3d.x(), p3d.y(), 2.5 , 0.1, 4.7 , 0.2));
-                  weight +=   10 * (normal_dist_2d(p3d.x(), p3d.y(), 1 , 0.1, -2.5 , 0.3));
+                  //weight +=   10 * (normal_dist_2d(p3d.x(), p3d.y(), 1 , 0.1, -2.5 , 0.3));
                   
                   pose_weights[i] += weight;
                 }

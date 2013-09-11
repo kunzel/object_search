@@ -6,9 +6,9 @@
   <param name="obj_desc" type="string" value="$(arg obj)" />
   <param name="search_method" type="string" value="$(arg method)" />    
   <param name="min_objs" type="int" value="1" />
-  <param name="max_objs" type="int" value="2" />
+  <param name="max_objs" type="int" value="1" />
   <param name="max_time" type="int" value="120" />
-  <param name="max_poses" type="int" value="10" />  
+  <param name="max_poses" type="int" value="20" />  
   
   <node name="search_agent" pkg="object_search" type="search_agent.py" output="screen"/>
 </launch>
