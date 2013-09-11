@@ -1,0 +1,29 @@
+<launch>
+  <!-- declare args to be passed in -->
+  <arg name="obj" default='{"type" : "Foo"}'/> 
+  <arg name="method" default='random'/> 
+  <arg name="robot" default='real'/> 
+
+  <!-- nav goal generation -->
+  <param name="inflation_radius" type="float" value="0.7" />
+
+  <!-- search params -->  
+  <param name="obj_desc" type="string" value="$(arg obj)" />
+  <param name="robot" type="string" value="$(arg robot)" />    
+  <param name="search_method" type="string" value="$(arg method)" />    
+
+  <!-- the polygon spefifies the search area in global map coordinates (default is full map) -->
+  <rosparam param="search_area">[[0,0],[0,-2],[-2,-2],[-2,0]]</rosparam>
+  <!-- robot lab -->
+  <!-- <rosparam param="search_area">[[0,0],[2,-2],[-2,-2]]</rosparam> -->
+
+  <!-- robot lab + atrium -->
+  <!-- <rosparam param="search_area">[[0,0],[2,-2],[-2,-2]]</rosparam> -->
+
+  <param name="min_objs" type="int" value="1" />
+  <param name="max_objs" type="int" value="1" />
+  <param name="max_time" type="int" value="120" />
+  <param name="max_poses" type="int" value="20" />  
+  
+  <node name="search_agent" pkg="object_search" type="search_agent.py" output="screen"/>
+</launch>

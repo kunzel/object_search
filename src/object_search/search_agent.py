@@ -20,6 +20,7 @@ from move_base_msgs.msg import *
 
 from std_msgs.msg import String
 from geometry_msgs.msg import Polygon
+from geometry_msgs.msg import Point32
 from geometry_msgs.msg import Pose
 from nav_goals_msgs.srv import NavGoals
 
@@ -49,19 +50,26 @@ class SearchAgent(Agent):
     """
     def __init__(self):
 
+        robot = rospy.get_param('robot', 'sim')
+        inf_radius = rospy.get_param('inflation_radius', '0.7')
         search_method = rospy.get_param('search_method','random')
-        perception    = rospy.get_param('perception', 'sim')
-    
+
+        polygon = rospy.get_param('search_area',[])
+        points = []
+        for point in polygon:
+            points.append(Point32(float(point[0]),float(point[1]),0))
+
+        #poly = Polygon() # empty polygon -> consider whole map
+        poly = Polygon(points) 
+            
         if search_method == 'support':
-            poly = Polygon() # empty polygon -> consider whole map
-            self.search_method = InformedSearch_SupportingPlanes(0.7, poly)
+            self.search_method = InformedSearch_SupportingPlanes(inf_radius, poly)
         elif search_method == 'qsr':
             self.search_method = InformedSearch_QSR()
         else: # 'random'
-            poly = Polygon() # empty polygon -> consider whole map
-            self.search_method = UninformedSearch_Random(0.7, poly)
+            self.search_method = UninformedSearch_Random(inf_radius, poly)
 
-        if perception == 'real':
+        if robot == 'real':
             self.perception = PerceiveReal()
         else: # 'sim'
             self.perception = PerceiveSim()
@@ -333,23 +341,52 @@ class PerceiveReal (smach.State):
     """
 
     def __init__(self):
+        
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
                              output_keys=['obj_list'])
 
-        rospy.Subscriber("/head_xtion/depth/points", String, self.callback)
-
         self.obj_list = []
         self.active = False
 
+        rospy.Subscriber("/head_xtion/depth/points", PointCloud2, self.callback)
+
+        rospy.wait_for_service('segment_and_classify')
+
+        try:
+            self.obj_rec = rospy.ServiceProxy('segment_and_classify', segment_and_classify )
+        except rospy.ServiceException, e:
+            rospy.logerr("Service call failed: %s" % e)
+
+
+
     def callback(self,data):
         if self.active == True:
-            self.first_call = False
-            obj_list = json.loads(data.data)
-            if len(obj_list) == 0:
+
+            rospy.loginfo('Call object recognition service')
+
+            obj_rec_resp = self.obj_rec(data)
+
+            # ['Cup', 'Banana']
+
+            try:
+                cat_list =  obj_rec_resp.categories_found
+            except rospy.ServiceException, e:
+                rospy.logerr("Service call failed: %s" % e)
+            
+            rospy.loginfo('Found categories: %i', len(cat_list))
+
+            obj_list = []
+            if len(cat_list) == 0:
                 rospy.loginfo("Nothing perceived")
-            for obj_desc in obj_list:
-                rospy.loginfo("Perceived: %s" % obj_desc.get('name'))
+            else:
+                for cat in cat_list:
+                    rospy.loginfo('Categorie: %s', cat)
+                    obj_desc = dict()
+                    obj_desc['type'] = cat
+                    #obj_desc['probability'] = 1.0
+                
+                    obj_list.append(obj_desc)
 
             self.obj_list = obj_list
 
