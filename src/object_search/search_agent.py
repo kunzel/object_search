@@ -23,6 +23,10 @@ from geometry_msgs.msg import Polygon
 from geometry_msgs.msg import Pose
 from nav_goals_msgs.srv import NavGoals
 
+from sensor_msgs.msg import PointCloud2
+
+from soc_msg_and_serv.srv import segment_and_classify
+
 MOVE_BASE_EXEC_TIMEOUT=rospy.Duration(600.0)
 MOVE_BASE_PREEMPT_TIMEOUT=rospy.Duration(10.0)
 
@@ -46,7 +50,8 @@ class SearchAgent(Agent):
     def __init__(self):
 
         search_method = rospy.get_param('search_method','random')
-        
+        perception    = rospy.get_param('perception', 'sim')
+    
         if search_method == 'support':
             poly = Polygon() # empty polygon -> consider whole map
             self.search_method = InformedSearch_SupportingPlanes(0.7, poly)
@@ -55,6 +60,14 @@ class SearchAgent(Agent):
         else: # 'random'
             poly = Polygon() # empty polygon -> consider whole map
             self.search_method = UninformedSearch_Random(0.7, poly)
+
+        if perception == 'real':
+            self.perception = PerceiveReal()
+        else: # 'sim'
+            self.perception = PerceiveSim()
+
+
+
 
         # the super().__init__() methods calls make_sm(),
         # hence self.search_method has to be set in advance
@@ -109,7 +122,7 @@ class SearchAgent(Agent):
             #                                     'preempted':'preempted'},
             #                        remapping={'pose_input':'sm_pose_data'})
 
-            smach.StateMachine.add('Perceive', Perceive(), 
+            smach.StateMachine.add('Perceive', self.perception, 
                                    {'succeeded':'SearchMonitor',
                                     'aborted':'aborted',
                                     'preempted':'preempted'},
@@ -270,29 +283,7 @@ class SearchMonitor (smach.State):
 
 
 
-# class GoToPose (smach.State):
-
-#     """
-#     Go to pose.
-
-#     """
-    
-#     def __init__(self):
-#         smach.State.__init__(self,
-#                              outcomes=['succeeded', 'aborted', 'preempted'],
-#                              input_keys=['pose_input'])
-
-
-#     def execute(self, userdata):
-#         rospy.loginfo('Executing state %s', self.__class__.__name__)
-        
-#         rospy.loginfo(userdata.pose_input)
-#         return 'succeeded'
-
-
-
-    
-class Perceive (smach.State):
+class PerceiveSim (smach.State):
 
     """
     Perceive the environemt.
@@ -332,6 +323,48 @@ class Perceive (smach.State):
 
         self.active = False
         return 'succeeded'
+
+
+class PerceiveReal (smach.State):
+
+    """
+    Perceive the environemt.
+
+    """
+
+    def __init__(self):
+        smach.State.__init__(self,
+                             outcomes=['succeeded', 'aborted', 'preempted'],
+                             output_keys=['obj_list'])
+
+        rospy.Subscriber("/head_xtion/depth/points", String, self.callback)
+
+        self.obj_list = []
+        self.active = False
+
+    def callback(self,data):
+        if self.active == True:
+            self.first_call = False
+            obj_list = json.loads(data.data)
+            if len(obj_list) == 0:
+                rospy.loginfo("Nothing perceived")
+            for obj_desc in obj_list:
+                rospy.loginfo("Perceived: %s" % obj_desc.get('name'))
+
+            self.obj_list = obj_list
+
+    def execute(self, userdata):
+        rospy.loginfo('Executing state %s', self.__class__.__name__)
+        self.active = True
+
+        # wait for some time to read from the topic
+        # TODO: replace with a service call
+        rospy.sleep(3)
+        userdata.obj_list = self.obj_list
+
+        self.active = False
+        return 'succeeded'
+
 
     
 #______________________________________________________________________________

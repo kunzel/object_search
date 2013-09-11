@@ -22,9 +22,11 @@
   <run_depend>roscpp</run_depend>
   <run_depend>octomap</run_depend>
   <run_depend>geometry_msgs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
   <run_depend>smach</run_depend>  
   <run_depend>smach_ros</run_depend>
   <run_depend>nav_goals_msgs</run_depend>
+  <run_depend>soc_msg_and_serv</run_depend>
   <!-- <run_depend>beginner_tutorials</run_depend> -->
 </package>
