@@ -25,6 +25,7 @@ from geometry_msgs.msg import Pose
 from nav_goals_msgs.srv import NavGoals
 
 from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import JointState
 
 from soc_msg_and_serv.srv import segment_and_classify
 
@@ -50,24 +51,27 @@ class SearchAgent(Agent):
     """
     def __init__(self):
 
-        robot = rospy.get_param('robot', 'sim')
+        robot = rospy.get_param('robot', 'real')
         inf_radius = rospy.get_param('inflation_radius', '0.7')
         search_method = rospy.get_param('search_method','random')
 
         polygon = rospy.get_param('search_area',[])
+        #polygon = [[1.2,0.5],[-4.6,0.05],[-3.5,-6.0],[1.5,-6.0]]
+        rospy.loginfo('Polygon: %s', polygon)
         points = []
         for point in polygon:
+            rospy.loginfo('Point: %s', point)
             points.append(Point32(float(point[0]),float(point[1]),0))
 
         #poly = Polygon() # empty polygon -> consider whole map
         poly = Polygon(points) 
             
         if search_method == 'support':
-            self.search_method = InformedSearch_SupportingPlanes(inf_radius, poly)
+            self.search_method = InformedSearch_SupportingPlanes(float(inf_radius), poly)
         elif search_method == 'qsr':
             self.search_method = InformedSearch_QSR()
         else: # 'random'
-            self.search_method = UninformedSearch_Random(inf_radius, poly)
+            self.search_method = UninformedSearch_Random(float(inf_radius), poly)
 
         if robot == 'real':
             self.perception = PerceiveReal()
@@ -310,6 +314,7 @@ class PerceiveSim (smach.State):
 
         self.obj_list = []
         self.active = False
+        self.first_call = False
 
     def callback(self,data):
         if self.active == True and self.first_call == True:
@@ -352,8 +357,12 @@ class PerceiveReal (smach.State):
 
         self.obj_list = []
         self.active = False
+        self.first_call = False
 
         rospy.Subscriber("/head_xtion/depth/points", PointCloud2, self.callback)
+
+
+        self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
 
         rospy.wait_for_service('segment_and_classify')
 
@@ -365,47 +374,71 @@ class PerceiveReal (smach.State):
 
 
     def callback(self,data):
-        if self.active == True:
 
-            rospy.loginfo('Call object recognition service')
+        if self.active == True and self.first_call == True:
+            self.first_call = False
 
-            obj_rec_resp = self.obj_rec(data)
-
-            # ['Cup', 'Banana']
-
-            try:
-                cat_list =  obj_rec_resp.categories_found
-            except rospy.ServiceException, e:
-                rospy.logerr("Service call failed: %s" % e)
+            self.pointcloud = data
             
-            rospy.loginfo('Found categories: %i', len(cat_list))
-
-            obj_list = []
-            if len(cat_list) == 0:
-                rospy.loginfo("Nothing perceived")
-            else:
-                for cat in cat_list:
-                    rospy.loginfo('Categorie: %s', cat)
-                    obj_desc = dict()
-                    obj_desc['type'] = cat
-                    #obj_desc['probability'] = 1.0
-                
-                    obj_list.append(obj_desc)
-
-            self.obj_list = obj_list
+    
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
 
-        for view in userdata.view_list:
-            self.active = True
+        self.obj_list = []
 
-            # wait for some time to read from the topic
+        i = 1
+        for view in userdata.view_list:
+
+            rospy.loginfo('%i view: set PTU to %s',i,view)
+
+            joint_state = JointState()
+
+            joint_state.header.frame_id = 'tessdaf'
+            joint_state.name = ['pan', 'tilt']
+            joint_state.position = [float(view[0]),float(view[1])]
+            joint_state.velocity = [float(1.0),float(1.0)]
+            joint_state.effort = [float(1.0),float(1.0)]
+            
+            self.ptu_cmd.publish(joint_state)
+            
+            # wait until PTU has finished or point cloud get screwed up
+            rospy.sleep(3)
+            
+            rospy.loginfo('%i view: receive point cloud',i)
+            self.active = True
+            self.first_call = True
+
+            # wait for some time to read once from the topic and store it onto self.pointcloud
             # TODO: replace with a service call
             rospy.sleep(3)
-            userdata.obj_list = self.obj_list
-
             self.active = False
+
+            rospy.loginfo('%i view: call object recognition service',i)
+            try:
+                obj_rec_resp = self.obj_rec(self.pointcloud)
+            except rospy.ServiceException, e:
+                rospy.logerr("Service call failed: %s" % e)
+
+            cat_list =  obj_rec_resp.categories_found
+
+            if len(cat_list) == 0:
+                rospy.loginfo("%i view: nothing perceived",i)
+            else:
+                rospy.loginfo('%i view: found categories: %i', i, len(cat_list))
+                for cat in cat_list:
+                    
+                    rospy.loginfo('Categorie: %s', cat.data)
+                    obj_desc = dict()
+                    obj_desc['type'] = cat.data
+                    #obj_desc['probability'] = 1.0
+                
+                    self.obj_list.append(obj_desc)
+
+            i = i + 1
+
+
+        userdata.obj_list = self.obj_list
 
         return 'succeeded'
 
