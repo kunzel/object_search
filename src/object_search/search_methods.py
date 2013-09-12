@@ -26,7 +26,7 @@ class UninformedSearch_Random (smach.State):
         
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
-                             output_keys=['pose_output'])
+                             output_keys=['pose_output','view_list'])
 
         rospy.wait_for_service('nav_goals')
         try:
@@ -40,6 +40,8 @@ class UninformedSearch_Random (smach.State):
         try:
             resp = self.nav_goals(1, self.inflation_radius, self.polygon)
             userdata.pose_output = resp.goals.poses[0]
+            userdata.view_list = [[0.0,0.0],[0.5,0.5],[-0.5,0.5]]
+            
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
             return 'aborted'
@@ -57,7 +59,7 @@ class InformedSearch_SupportingPlanes (smach.State):
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
                              input_keys=['obj_desc','obj_list'],
-                             output_keys=['pose_output'])
+                             output_keys=['pose_output','view_list'])
 
         rospy.wait_for_service('nav_goals')
         try:

@@ -108,7 +108,8 @@ class SearchAgent(Agent):
                                                 'preempted':'preempted'},
                                    remapping={'obj_desc':'sm_obj_desc',
                                               'obj_list':'sm_obj_list',
-                                              'pose_output':'sm_pose_data'})
+                                              'pose_output':'sm_pose_data',
+                                              'view_list':'sm_view_list'})
 
 
             smach.StateMachine.add('GoToPose',
@@ -134,7 +135,8 @@ class SearchAgent(Agent):
                                    {'succeeded':'SearchMonitor',
                                     'aborted':'aborted',
                                     'preempted':'preempted'},
-                                   remapping={'obj_list':'sm_obj_list'})
+                                   remapping={'view_list':'sm_view_list',
+                                              'obj_list':'sm_obj_list'})
 
         
         return self.sm
@@ -301,6 +303,7 @@ class PerceiveSim (smach.State):
     def __init__(self):
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
+                             input_keys=['view_list'],
                              output_keys=['obj_list'])
 
         rospy.Subscriber("semcam", String, self.callback)
@@ -344,6 +347,7 @@ class PerceiveReal (smach.State):
         
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
+                             input_keys=['view_list'],
                              output_keys=['obj_list'])
 
         self.obj_list = []
@@ -392,14 +396,17 @@ class PerceiveReal (smach.State):
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
-        self.active = True
 
-        # wait for some time to read from the topic
-        # TODO: replace with a service call
-        rospy.sleep(3)
-        userdata.obj_list = self.obj_list
+        for view in userdata.view_list:
+            self.active = True
 
-        self.active = False
+            # wait for some time to read from the topic
+            # TODO: replace with a service call
+            rospy.sleep(3)
+            userdata.obj_list = self.obj_list
+
+            self.active = False
+
         return 'succeeded'
 
 
