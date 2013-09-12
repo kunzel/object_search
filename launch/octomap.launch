@@ -1,0 +1,23 @@
+<launch>
+
+    <!-- size of the voxels in the octomap in m? -->
+    <arg name="res" default="0.05"/>
+
+    <!-- launch Octomap -->
+    <node pkg="octomap_server" type="octomap_server_node" name="octomap_server">
+		<param name="resolution" value="$(arg res)"/>
+		
+		<!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
+		<param name="frame_id" type="string" value="map" />
+		
+		<!-- maximum range to integrate (speedup!) -->
+		<param name="sensor_model/max_range" value="4.0" />
+
+		<param name="pointcloud_min_z" value="0.3"/>
+		<param name="pointcloud_max_z" value="2.2"/>
+
+		<!-- data source to integrate (PointCloud2) -->
+		<remap from="cloud_in" to="segmented_pcl" />
+		<!-- <remap from="cloud_in" to="/head_xtion/depth/points" />-->
+	</node>
+</launch>
