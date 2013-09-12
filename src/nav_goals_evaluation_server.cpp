@@ -414,11 +414,12 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
           for( std::vector<geometry_msgs::Pose>::const_iterator it = req.goals.poses.begin(); 
                it!=req.goals.poses.end(); ++it) 
             {
+              //if ( p3d.z() >= 0.4 )//IGNORE THE GROUND PLANE 
               if ( voxel_in_frustum(p3d,*it) )
                 {
                   // QSR 
-                  weight +=   10 * (normal_dist_2d(p3d.x(), p3d.y(), -1.0 , 0.2, 4.7 , 0.1));
-                  weight +=   10 * (normal_dist_2d(p3d.x(), p3d.y(), 2.5 , 0.1, 4.7 , 0.2));
+                  //weight +=   10 * (normal_dist_2d(p3d.x(), p3d.y(), -1.0 , 0.2, 4.7 , 0.1));
+                  //weight +=   10 * (normal_dist_2d(p3d.x(), p3d.y(), 2.5 , 0.1, 4.7 , 0.2));
                   //weight +=   10 * (normal_dist_2d(p3d.x(), p3d.y(), 1 , 0.1, -2.5 , 0.3));
                   
                   pose_weights[i] += weight;
