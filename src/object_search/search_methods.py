@@ -40,7 +40,7 @@ class UninformedSearch_Random (smach.State):
         try:
             resp = self.nav_goals(1, self.inflation_radius, self.polygon)
             userdata.pose_output = resp.goals.poses[0]
-            userdata.view_list = [[0.0,0.0],[0.5,0.5],[-0.5,0.5]]
+            userdata.view_list = [[0.0,0.5],[0.5,0.5],[-0.5,0.5]]
             
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
@@ -104,6 +104,8 @@ class InformedSearch_SupportingPlanes (smach.State):
             rospy.loginfo("Best pose: (%s,%s)", nav_goals_eval_resp.sorted_goals.poses[0].position.x,nav_goals_eval_resp.sorted_goals.poses[0].position.y )
             
             userdata.pose_output = nav_goals_eval_resp.sorted_goals.poses[0]
+            userdata.view_list = [[0.0,0.0],[0.5,0.5],[-0.5,0.5]]
+
             
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
