@@ -12,6 +12,7 @@ from agent import Agent
 
 from search_methods import UninformedSearch_Random
 from search_methods import InformedSearch_SupportingPlanes
+from search_methods import InformedSearch_ViewEvaluation
 from search_methods import InformedSearch_QSR
 
 import actionlib
@@ -68,6 +69,8 @@ class SearchAgent(Agent):
             
         if search_method == 'support':
             self.search_method = InformedSearch_SupportingPlanes(float(inf_radius), poly)
+        elif search_method == 'bestview':
+            self.search_method = InformedSearch_ViewEvaluation(float(inf_radius), poly)
         elif search_method == 'qsr':
             self.search_method = InformedSearch_QSR()
         else: # 'random'
@@ -403,7 +406,7 @@ class PerceiveReal (smach.State):
             self.ptu_cmd.publish(joint_state)
             
             # wait until PTU has finished or point cloud get screwed up
-            rospy.sleep(3)
+            rospy.sleep(2)
             
             rospy.loginfo('%i view: receive point cloud',i)
             self.active = True
@@ -411,7 +414,7 @@ class PerceiveReal (smach.State):
 
             # wait for some time to read once from the topic and store it onto self.pointcloud
             # TODO: replace with a service call
-            rospy.sleep(3)
+            rospy.sleep(2)
             self.active = False
 
             rospy.loginfo('%i view: call object recognition service',i)
