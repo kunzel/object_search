@@ -238,7 +238,7 @@ class InformedSearch_ViewEvaluation (smach.State):
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
         try:
-            nav_goals_resp = self.nav_goals(20, self.inflation_radius, self.polygon)
+            nav_goals_resp = self.nav_goals(50, self.inflation_radius, self.polygon)
 
             i = 0
             pan = [0.0,0.5,-0.5, 0.0,0.5,-0.5, 0.0,0.5,-0.5]
