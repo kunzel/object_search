@@ -56,7 +56,7 @@ class ObjectSearchServer(object):
                 self.success = False
                 break
 
-            rospy.loginfo(self.agent.get_sm().get_active_states())
+            #rospy.loginfo(self.agent.get_sm().get_active_states())
             userdata = self.agent.get_sm_userdata()
 
             

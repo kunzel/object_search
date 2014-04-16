@@ -28,7 +28,8 @@ from nav_goals_msgs.srv import NavGoals
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs.msg import JointState
 
-#from soc_msg_and_serv.srv import segment_and_classify
+from classifier_srv_definitions.srv import segment_and_classify
+
 
 MOVE_BASE_EXEC_TIMEOUT=rospy.Duration(600.0)
 MOVE_BASE_PREEMPT_TIMEOUT=rospy.Duration(10.0)
@@ -420,7 +421,7 @@ class PerceiveReal (smach.State):
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
                              input_keys=['view_list'],
-                             output_keys=['obj_list'])
+                             output_keys=['state','obj_list'])
 
         self.obj_list = []
         self.active = False
@@ -433,10 +434,10 @@ class PerceiveReal (smach.State):
 
         self.cluster_vis = rospy.Publisher('/cluster_vis', PointCloud2)
 
-        rospy.wait_for_service('segment_and_classify')
+        rospy.wait_for_service('/classifier_service/segment_and_classify')
 
         try:
-            self.obj_rec = rospy.ServiceProxy('segment_and_classify', segment_and_classify )
+            self.obj_rec = rospy.ServiceProxy('/classifier_service/segment_and_classify', segment_and_classify )
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
 
@@ -491,39 +492,49 @@ class PerceiveReal (smach.State):
             except rospy.ServiceException, e:
                 rospy.logerr("Service call failed: %s" % e)
 
-            objects = obj_rec_resp.classification
-
+            objects = obj_rec_resp.class_results
 
 #            if len(objects) == 0:
 
             userdata.state = 'image_analysis'
 
 
-            if len(cat_list) == 0:
+            if len(objects) == 0:
                 rospy.loginfo("%i view: nothing perceived",i)
             else:
                 rospy.loginfo('%i view: found objects: %i', i, len(objects))
 
-                for i in range(len(objects)):
+                for j in range(len(objects)):
 
-                    obj = objects[i]
+                    obj = objects[j]
                     
 
                     max_idx = obj.confidence.index(max(obj.confidence))
 
                     obj_desc = dict()
-                    obj_desc['type'] = obj.type[max_idx]
+
+                    obj_desc['type'] = obj.class_type[max_idx].data.strip('/')
 
                     rospy.loginfo('Object: %s', obj_desc['type'])
                     #obj_desc['probability'] = 1.0
 
-                    self.cluster_vis.publish(obj_rec_resp.cloud[i])
+                    #self.cluster_vis.publish(obj_rec_resp.cloud[i])
                     
                     self.obj_list.append(obj_desc)
 
             i = i + 1
 
+        # back to original position
+        joint_state = JointState()
+        joint_state.header.frame_id = 'tessdaf'
+        joint_state.name = ['pan', 'tilt']
+        joint_state.position = [float(0.0),float(0.0)]
+        joint_state.velocity = [float(1.0),float(1.0)]
+        joint_state.effort = [float(1.0),float(1.0)]
+            
+        self.ptu_cmd.publish(joint_state)
 
+            
         userdata.obj_list = self.obj_list
 
         return 'succeeded'
