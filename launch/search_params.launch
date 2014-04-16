@@ -1,0 +1,24 @@
+<launch>
+  <!-- declare args to be passed in -->
+  <arg name="obj" default='{"type" : "Cup"}'/> 
+  <arg name="method" default='support'/> 
+  <arg name="robot" default='sim'/> 
+
+  <param name="obj_desc" type="string" value="$(arg obj)" />
+  <param name="search_method" type="string" value="$(arg method)" />    
+  <param name="robot" type="string" value="$(arg robot)" />    
+
+  <!-- robot lab bham-->
+  <!--<rosparam param="search_area">[[0.5,-6.7],[6.8,-6.7],[6.8,-9.2],[0.5,-9.2]]</rosparam>-->
+  <!--<rosparam param="search_area">[[0.0,-5.1],[7.1,-5.1],[7.1,-10.8],[0.0,-10.8]]</rosparam>-->
+  <!--<rosparam param="search_area">[[-2.0,4.0],[4.0,4.0],[4.0,-6.0],[-2.0,-6.0]]</rosparam>-->
+  <rosparam param="search_area">[[2.0,-4.0],[5.0,-4.0],[2.0,2.0],[5.0,2.0]]</rosparam>
+
+
+  <param name="min_objs" type="int" value="1" />
+  <param name="max_objs" type="int" value="1" />
+  <param name="max_time" type="int" value="240"/>
+  <param name="max_poses" type="int" value="20" />  
+
+  
+</launch>
