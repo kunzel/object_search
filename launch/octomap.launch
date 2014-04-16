@@ -17,7 +17,7 @@
 		<param name="pointcloud_max_z" value="2.2"/>
 
 		<!-- data source to integrate (PointCloud2) -->
-		<remap from="cloud_in" to="segmented_pcl" />
-		<!-- <remap from="cloud_in" to="/head_xtion/depth/points" />-->
+		<!--<remap from="cloud_in" to="segmented_pcl" />-->
+		<remap from="cloud_in" to="/head_xtion/depth/points" />
 	</node>
 </launch>

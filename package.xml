@@ -28,5 +28,8 @@
   <run_depend>smach_ros</run_depend>
   <run_depend>nav_goals_msgs</run_depend>
   <run_depend>soc_msg_and_serv</run_depend>
+  <run_depend>object_search_action</run_depend>
+
+
   <!-- <run_depend>beginner_tutorials</run_depend> -->
 </package>

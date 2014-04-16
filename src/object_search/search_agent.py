@@ -28,7 +28,7 @@ from nav_goals_msgs.srv import NavGoals
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs.msg import JointState
 
-from soc_msg_and_serv.srv import segment_and_classify
+#from soc_msg_and_serv.srv import segment_and_classify
 
 MOVE_BASE_EXEC_TIMEOUT=rospy.Duration(600.0)
 MOVE_BASE_PREEMPT_TIMEOUT=rospy.Duration(10.0)
@@ -155,6 +155,8 @@ class SearchAgent(Agent):
         obj_desc = rospy.get_param('obj_desc','{"type" : "Bar"}')
         self.sm.userdata.sm_obj_desc  = json.loads(obj_desc)
 
+        self.sm.userdata.state = 'pose_selection' 
+        
         self.sm.userdata.sm_min_objs  = rospy.get_param('min_objs',1)
         self.sm.userdata.sm_max_objs =  rospy.get_param('max_objs',1)
         self.sm.userdata.sm_max_time  = rospy.get_param('max_time', 120)
@@ -311,7 +313,7 @@ class PerceiveSim (smach.State):
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
                              input_keys=['view_list'],
-                             output_keys=['obj_list'])
+                             output_keys=['state','obj_list'])
 
         rospy.Subscriber("semcam", String, self.callback)
         self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
@@ -351,6 +353,10 @@ class PerceiveSim (smach.State):
         i = 1
         for view in userdata.view_list:
 
+            if self.preempt_requested():
+                self.service_preempt()
+                return 'preempted'
+            
             rospy.loginfo('%i view: set PTU to %s',i,view)
 
             joint_state = JointState()
@@ -371,11 +377,19 @@ class PerceiveSim (smach.State):
 
             # wait for some time to read once from the topic and store it onto self.pointcloud
             # TODO: replace with a service call
-            rospy.sleep(2)
+
+            userdata.state = 'taking_image'
+
+            rospy.sleep(3)
             
             self.active = False
 
+            userdata.state = 'image_analysis'
+            
+            rospy.sleep(3)
             i = i + 1
+
+            
 
 
         userdata.obj_list = self.obj_list
@@ -464,6 +478,8 @@ class PerceiveReal (smach.State):
             self.active = True
             self.first_call = True
 
+            userdata.state = 'taking_image'
+
             # wait for some time to read once from the topic and store it onto self.pointcloud
             # TODO: replace with a service call
             rospy.sleep(2)
@@ -477,7 +493,13 @@ class PerceiveReal (smach.State):
 
             objects = obj_rec_resp.classification
 
-            if len(objects) == 0:
+
+#            if len(objects) == 0:
+
+            userdata.state = 'image_analysis'
+
+
+            if len(cat_list) == 0:
                 rospy.loginfo("%i view: nothing perceived",i)
             else:
                 rospy.loginfo('%i view: found objects: %i', i, len(objects))
