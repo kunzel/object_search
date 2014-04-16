@@ -1,6 +1,6 @@
 <launch>
   <!-- declare args to be passed in -->
-  <arg name="obj" default='{"type" : "Foo"}'/> 
+  <arg name="obj" default='{"type" : "Cup"}'/> 
   <arg name="method" default='random'/> 
   <arg name="robot" default='real'/> 
 
@@ -22,7 +22,7 @@
 
   <param name="min_objs" type="int" value="1" />
   <param name="max_objs" type="int" value="1" />
-  <param name="max_time" type="int" value="180" />
+  <param name="max_time" type="int" value="300" />
   <param name="max_poses" type="int" value="50" />  
   
   <node name="search_agent" pkg="object_search" type="search_agent.py" output="screen"/>
