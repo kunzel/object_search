@@ -4,6 +4,7 @@ project(object_search)
 find_package(roscpp REQUIRED)
 find_package(nav_goals_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+  
  
 # find_package(octomap REQUIRED)
 find_package(octomap 1.6 REQUIRED) 

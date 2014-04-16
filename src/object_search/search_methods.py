@@ -62,7 +62,7 @@ class InformedSearch_SupportingPlanes (smach.State):
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
                              input_keys=['obj_desc','obj_list'],
-                             output_keys=['pose_output','view_list'])
+                             output_keys=['state','pose_output','view_list'])
 
         rospy.wait_for_service('nav_goals')
         try:
@@ -105,7 +105,8 @@ class InformedSearch_SupportingPlanes (smach.State):
             self.pubmarker.publish(markerArray)
                 
             rospy.loginfo("Best pose: (%s,%s)", nav_goals_eval_resp.sorted_goals.poses[0].position.x,nav_goals_eval_resp.sorted_goals.poses[0].position.y )
-            
+
+            userdata.state = 'driving'
             userdata.pose_output = nav_goals_eval_resp.sorted_goals.poses[0]
             userdata.view_list = [[0.0,0.5],[0.5,0.5],[-0.5,0.5]]
 
