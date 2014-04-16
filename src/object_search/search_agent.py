@@ -417,6 +417,8 @@ class PerceiveReal (smach.State):
 
         self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
 
+        self.cluster_vis = rospy.Publisher('/cluster_vis', PointCloud2)
+
         rospy.wait_for_service('segment_and_classify')
 
         try:
@@ -473,19 +475,28 @@ class PerceiveReal (smach.State):
             except rospy.ServiceException, e:
                 rospy.logerr("Service call failed: %s" % e)
 
-            cat_list =  obj_rec_resp.categories_found
+            objects = obj_rec_resp.classification
 
-            if len(cat_list) == 0:
+            if len(objects) == 0:
                 rospy.loginfo("%i view: nothing perceived",i)
             else:
-                rospy.loginfo('%i view: found categories: %i', i, len(cat_list))
-                for cat in cat_list:
+                rospy.loginfo('%i view: found objects: %i', i, len(objects))
+
+                for i in range(len(objects)):
+
+                    obj = objects[i]
                     
-                    rospy.loginfo('Categorie: %s', cat.data)
+
+                    max_idx = obj.confidence.index(max(obj.confidence))
+
                     obj_desc = dict()
-                    obj_desc['type'] = cat.data
+                    obj_desc['type'] = obj.type[max_idx]
+
+                    rospy.loginfo('Object: %s', obj_desc['type'])
                     #obj_desc['probability'] = 1.0
-                
+
+                    self.cluster_vis.publish(obj_rec_resp.cloud[i])
+                    
                     self.obj_list.append(obj_desc)
 
             i = i + 1
