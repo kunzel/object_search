@@ -3,10 +3,12 @@
   <arg name="obj" default='{"type" : "foo"}'/> 
   <arg name="method" default='support'/> 
   <arg name="robot" default='real'/> 
+  <arg name="map_frame" default='/projected_map'/> 
 
   <param name="obj_desc" type="string" value="$(arg obj)" />
   <param name="search_method" type="string" value="$(arg method)" />    
   <param name="robot" type="string" value="$(arg robot)" />    
+  <param name="map_frame" type="string" value="$(arg map_frame)" />    
 
   <!-- robot lab bham-->
   <!--<rosparam param="search_area">[[0.5,-6.7],[6.8,-6.7],[6.8,-9.2],[0.5,-9.2]]</rosparam>-->
@@ -14,7 +16,7 @@
   <!--<rosparam param="search_area">[[-2.0,4.0],[4.0,4.0],[4.0,-6.0],[-2.0,-6.0]]</rosparam>-->
   
   <!-- simulated lab -->
-  <rosparam param="search_area">[[2.0,-4.0],[5.0,-4.0],[2.0,2.0],[5.0,2.0]]</rosparam>
+  <rosparam param="search_area">[[2.0,-8.0],[5.0,-8.0],[5.0,2.0],[2.0,2.0]]</rosparam>
  
   <!-- real bham lab -->
   <!-- <rosparam param="search_area">[[0.0,0.0],[-2.0,0.0],[0.0,-3.5],[-2.0,-3.5]]</rosparam> -->
