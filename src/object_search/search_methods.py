@@ -111,7 +111,8 @@ class InformedSearch_SupportingPlanes (smach.State):
                         self.create_marker(markerArray,
                                            i,
                                            nav_goals_eval_resp.sorted_goals.poses[i],
-                                           nav_goals_eval_resp.weights)
+                                           nav_goals_eval_resp.weights,
+                                           userdata.max_poses - 1)
 
 
                 self.marker_len =  len(markerArray.markers)
@@ -138,7 +139,7 @@ class InformedSearch_SupportingPlanes (smach.State):
         return 'succeeded'
 
 
-    def create_marker(self,markerArray, marker_id, pose, weights):
+    def create_marker(self,markerArray, marker_id, pose, weights, max_idx):
         marker1 = Marker()
         marker1.id = marker_id 
         marker1.header.frame_id = "/map"
@@ -148,9 +149,9 @@ class InformedSearch_SupportingPlanes (smach.State):
         marker1.scale.y = 1
         marker1.scale.z = 2
         marker1.color.a = 0.25
-        marker1.color.r = r_func(weights[marker_id] / weights[0])
-        marker1.color.g = g_func(weights[marker_id] / weights[0])
-        marker1.color.b = b_func(weights[marker_id] / weights[0])
+        marker1.color.r = r_func((weights[marker_id] - weights[max_idx]) / (weights[0]- weights[max_idx] +1))
+        marker1.color.g = g_func((weights[marker_id] - weights[max_idx]) / (weights[0]- weights[max_idx] +1))
+        marker1.color.b = b_func((weights[marker_id] - weights[max_idx]) / (weights[0]- weights[max_idx] +1))
 
         #rospy.loginfo("weight: %s max: %s ratio: %s",weights[marker_id], weights[0], weights[marker_id] / weights[0])
         #rospy.loginfo("ID: %s RGB: %s %s %s", marker_id, marker1.color.r, marker1.color.g, marker1.color.b)
