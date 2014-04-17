@@ -93,7 +93,7 @@ class InformedSearch_SupportingPlanes (smach.State):
 
             if len(self.agenda) == 0:
             
-                nav_goals_resp = self.nav_goals(100, self.inflation_radius, self.polygon)
+                nav_goals_resp = self.nav_goals(500, self.inflation_radius, self.polygon)
 
 
                 nav_goals_eval_resp = self.nav_goals_eval(json.dumps(userdata.obj_desc),
@@ -107,10 +107,11 @@ class InformedSearch_SupportingPlanes (smach.State):
 
                     self.agenda.append(nav_goals_eval_resp.sorted_goals.poses[i])
                     
-                    self.create_marker(markerArray,
-                                       i,
-                                       nav_goals_eval_resp.sorted_goals.poses[i],
-                                       nav_goals_eval_resp.weights)
+                    if i < userdata.max_poses:
+                        self.create_marker(markerArray,
+                                           i,
+                                           nav_goals_eval_resp.sorted_goals.poses[i],
+                                           nav_goals_eval_resp.weights)
 
 
                 self.marker_len =  len(markerArray.markers)
