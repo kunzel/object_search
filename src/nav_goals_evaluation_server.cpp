@@ -371,12 +371,12 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
   ROS_INFO("request: obj_desc: %s, obj_list: %s", req.obj_desc.c_str(),  req.obj_list.c_str());
 
   // Get Octomap and extract supporting planes (only once)
-  if (first_call)
-    {
+  //if (first_call)
+  //  {
       first_call = false;
       octree = retrieve_octree();
       sp_octree = extract_supporting_planes(octree);
-    }
+  //  }
   
   // Weight voxels according to distribution (uniform, QSR) 
   std::vector<OcTreeKey> keys; 
