@@ -67,7 +67,7 @@ class ObjectSearchServer(object):
             if userdata.state == 'driving':
                 self._feedback.goal_pose = userdata.sm_pose_data
             elif userdata.state == 'image_analysis':
-                self._feedback.objs = []
+                self._feedback.objs = userdata.cloud
             self._as.publish_feedback(self._feedback)
 
             r.sleep()
@@ -84,6 +84,12 @@ class ObjectSearchServer(object):
             rospy.loginfo('exceeded_max_poses: %s ' % userdata.exceeded_max_poses)
 
             rospy.loginfo('%s: Succeeded' % self._action_name)
+
+
+            self._result.obj_found = userdata.obj_found
+            self._result.exceeded_max_time = userdata.exceeded_max_time
+            self._result.exceeded_max_poses = userdata.exceeded_max_poses
+            
             self._as.set_succeeded(self._result)
 
 # # append the seeds for the fibonacci sequence

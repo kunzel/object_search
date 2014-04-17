@@ -4,6 +4,7 @@ import smach
 import smach_ros
 import json
 import math
+import random
 
 from nav_goals_msgs.srv import NavGoals
 from nav_goals_msgs.srv import WeightedNavGoals
@@ -58,10 +59,13 @@ class InformedSearch_SupportingPlanes (smach.State):
 
         self.inflation_radius = inflation_radius
         self.polygon = polygon
+
+        self.agenda = []
+        self.index = -1
         
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
-                             input_keys=['obj_desc','obj_list'],
+                             input_keys=['obj_desc','obj_list','max_poses'],
                              output_keys=['state','pose_output','view_list'])
 
         rospy.wait_for_service('nav_goals')
@@ -83,32 +87,47 @@ class InformedSearch_SupportingPlanes (smach.State):
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
+        
+        
         try:
-            nav_goals_resp = self.nav_goals(20, self.inflation_radius, self.polygon)
 
-
-            nav_goals_eval_resp = self.nav_goals_eval(json.dumps(userdata.obj_desc),
-                                                      json.dumps(userdata.obj_list),
-                                                      nav_goals_resp.goals)
-
-            self.delete_markers()            
-            markerArray = MarkerArray()
+            if len(self.agenda) == 0:
             
-            for i in range(0,len(nav_goals_eval_resp.sorted_goals.poses)):
-                self.create_marker(markerArray,
-                                   i,
-                                   nav_goals_eval_resp.sorted_goals.poses[i],
-                                   nav_goals_eval_resp.weights)
+                nav_goals_resp = self.nav_goals(100, self.inflation_radius, self.polygon)
 
 
-            self.marker_len =  len(markerArray.markers)
-            self.pubmarker.publish(markerArray)
+                nav_goals_eval_resp = self.nav_goals_eval(json.dumps(userdata.obj_desc),
+                                                          json.dumps(userdata.obj_list),
+                                                          nav_goals_resp.goals)
+
+                self.delete_markers()            
+                markerArray = MarkerArray()
+            
+                for i in range(0,len(nav_goals_eval_resp.sorted_goals.poses)):
+
+                    self.agenda.append(nav_goals_eval_resp.sorted_goals.poses[i])
+                    
+                    self.create_marker(markerArray,
+                                       i,
+                                       nav_goals_eval_resp.sorted_goals.poses[i],
+                                       nav_goals_eval_resp.weights)
+
+
+                self.marker_len =  len(markerArray.markers)
+                self.pubmarker.publish(markerArray)
                 
-            rospy.loginfo("Best pose: (%s,%s)", nav_goals_eval_resp.sorted_goals.poses[0].position.x,nav_goals_eval_resp.sorted_goals.poses[0].position.y )
 
-            userdata.state = 'driving'
-            userdata.pose_output = nav_goals_eval_resp.sorted_goals.poses[0]
-            userdata.view_list = [[0.0,0.5],[0.5,0.5],[-0.5,0.5]]
+
+
+            if len(self.agenda) != 0:
+                self.index += 1
+                if self.index >= userdata.max_poses or self.index >= len(self.agenda):
+                    return 'aborted'
+                
+                userdata.state = 'driving'
+                userdata.view_list = [[0.0,0.5],[0.5,0.5],[-0.5,0.5]]
+                userdata.pose_output = self.agenda[self.index]
+                rospy.loginfo("Next pose [%i]: (%s,%s)", self.index, self.agenda[self.index].position.x,self.agenda[self.index].position.y )
 
             
         except rospy.ServiceException, e:
