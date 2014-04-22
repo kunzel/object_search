@@ -126,8 +126,6 @@ class InformedSearch_SupportingPlanes (smach.State):
 
                 vp_trajectory_weights = get_weights(vp_trajectory)
 
-                print(vp_trajectory_weights)
-                
                 self.delete_markers()            
                 markerArray = MarkerArray()
             
@@ -390,20 +388,23 @@ def b_func(x):
 
         
     
-class InformedSearch_QSR (smach.State):
-    pass
-
 class InformedSearch_ViewEvaluation (smach.State):
 
     def __init__(self, inflation_radius, polygon):
 
         self.inflation_radius = inflation_radius
         self.polygon = polygon
+
+        self.num_of_nav_goals =    int(rospy.get_param('num_of_nav_goals', '500'))
+        self.num_of_trajectories = int(rospy.get_param('num_of_trajectories', '500'))
+
+        self.agenda = []
+        self.index = -1
         
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
-                             input_keys=['obj_desc','obj_list'],
-                             output_keys=['pose_output','view_list'])
+                             input_keys=['obj_desc','obj_list','max_poses'],
+                             output_keys=['state','pose_output','view_list'])
 
         rospy.wait_for_service('nav_goals')
         try:
@@ -423,6 +424,10 @@ class InformedSearch_ViewEvaluation (smach.State):
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
 
+        # get current robot pose
+        self.first_call = True
+        rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.amcl_cb)
+            
         # visualizing nav goals in RVIZ
         self.pubmarker = rospy.Publisher('ignore', MarkerArray)
         
@@ -430,51 +435,100 @@ class InformedSearch_ViewEvaluation (smach.State):
         self.pubviewposes = rospy.Publisher('best_views_poses', MarkerArray)
 
         self.marker_len = 0
+
+    def amcl_cb(self, data):
+            
+        if self.first_call == True:
+            self.current_pose = data.pose.pose
+            rospy.loginfo("Got current robot pose: (%f,%f)" % (self.current_pose.position.x, self.current_pose.position.y))
+            self.first_call = False
             
 
     def execute(self, userdata):
+
         rospy.loginfo('Executing state %s', self.__class__.__name__)
         try:
-            nav_goals_resp = self.nav_goals(50, self.inflation_radius, self.polygon)
 
-            i = 0
-            pan = [0.0,0.5,-0.5, 0.0,0.5,-0.5, 0.0,0.5,-0.5]
-            tilt = [0.25,0.25,0.25, 0.5,0.5,0.5 , 0.0,0.0,0.0]
-            # for view in view_list:
-            #     pan.append(float(view[0]))
-            #     tilt.append(float(view[1]))
+            if len(self.agenda) == 0:
+
+                nav_goals_resp = self.nav_goals(self.num_of_nav_goals, self.inflation_radius, self.polygon)
+
+                i = 0
+                #pan = [0.0,0.5,-0.5, 0.0,0.5,-0.5, 0.0,0.5,-0.5]
+                #tilt = [0.25,0.25,0.25, 0.5,0.5,0.5 , 0.0,0.0,0.0]
+                pan =  [0.0, 0.0]
+                tilt = [0.25, 0.5]
+
             
-            best_views_resp = self.best_views(nav_goals_resp.goals,
-                                                  pan, tilt, 1)
+                best_views_resp = self.best_views(nav_goals_resp.goals,
+                                                  pan, tilt, userdata.max_poses)
 
-            best_views_vis_resp = self.best_views_vis(nav_goals_resp.goals,
-                                                      pan, tilt, 1)
+                best_views_vis_resp = self.best_views_vis(nav_goals_resp.goals,
+                                                          pan, tilt, userdata.max_poses)
 
-            self.delete_markers()            
-            markerArray = MarkerArray()
-            
-            for i in range(0,len(best_views_resp.bestPoses.poses)):
-                self.create_marker(markerArray,
-                                   i,
-                                   best_views_resp.bestPoses.poses[i],
-                                   best_views_resp.bestPosesWeights)
-
-
-            self.marker_len =  len(markerArray.markers)
-            self.pubmarker.publish(markerArray)
-
-            self.pubviewcones.publish(best_views_vis_resp.cones3D)
-            self.pubviewposes.publish(best_views_vis_resp.cones2D)
-                                                      
-            rospy.loginfo("Best pose: (%s,%s)", best_views_resp.bestPoses.poses[0].position.x,best_views_resp.bestPoses.poses[0].position.y )
-            
-            userdata.pose_output = best_views_resp.bestPoses.poses[0]
-
-            view_lst = []
-            for i in range(0,len(best_views_resp.pan_sorted)/2):
-                view_lst.append([best_views_resp.pan_sorted[i],best_views_resp.tilt_sorted[i]])
                 
-            userdata.view_list = view_lst #[[best_views_resp.pan_sorted[0],best_views_resp.tilt_sorted[0]]] #[[0.0,0.5],[0.5,0.5],[-0.5,0.5]]
+                viewpoints = create_viewpoints(best_views_resp.bestPoses.poses,
+                                               best_views_resp.bestPosesWeights)
+
+                print "len(vp):", len(viewpoints)
+                print best_views_resp.bestPosesWeights
+                
+                vp_trajectory = plan_views(self.current_pose,
+                                           viewpoints,
+                                           self.num_of_trajectories,
+                                           userdata.max_poses)
+
+                vp_trajectory_weights = get_weights(vp_trajectory)
+
+
+                self.delete_markers()            
+                markerArray = MarkerArray()
+
+
+                for i in range(0,len(vp_trajectory)):
+
+                    self.agenda.append(vp_trajectory[i].get_pose())
+                    if i < userdata.max_poses:
+                        self.create_marker(markerArray,
+                                           i,
+                                           vp_trajectory[i].get_pose(),
+                                           vp_trajectory_weights)
+
+                
+                # for i in range(0,len(best_views_resp.bestPoses.poses)):
+                #     self.create_marker(markerArray,
+                #                        i,
+                #                        best_views_resp.bestPoses.poses[i],
+                #                        best_views_resp.bestPosesWeights)
+
+
+                self.marker_len =  len(markerArray.markers)
+                self.pubmarker.publish(markerArray)
+
+                #self.pubviewcones.publish(best_views_vis_resp.cones3D)
+                #self.pubviewposes.publish(best_views_vis_resp.cones2D)
+                                                      
+                rospy.loginfo("Best pose: (%s,%s)", best_views_resp.bestPoses.poses[0].position.x,best_views_resp.bestPoses.poses[0].position.y )
+
+
+            if len(self.agenda) != 0:
+                self.index += 1
+                if self.index >= userdata.max_poses or self.index >= len(self.agenda):
+                    return 'aborted'
+                
+                userdata.state = 'driving'
+
+                userdata.view_list = [[0.0,0.5]] #,[0.5,0.5],[-0.5,0.5]]
+
+                userdata.pose_output = self.agenda[self.index]
+                rospy.loginfo("Next pose [%i]: (%s,%s)", self.index, self.agenda[self.index].position.x,self.agenda[self.index].position.y )
+
+                
+                # view_lst = []
+                # for i in range(0,len(best_views_resp.pan_sorted)/2):
+                #     view_lst.append([best_views_resp.pan_sorted[i],best_views_resp.tilt_sorted[i]])
+
+                # userdata.view_list = view_lst #[[best_views_resp.pan_sorted[0],best_views_resp.tilt_sorted[0]]]
 
             
         except rospy.ServiceException, e:
@@ -494,18 +548,43 @@ class InformedSearch_ViewEvaluation (smach.State):
         marker1.scale.y = 1
         marker1.scale.z = 2
         marker1.color.a = 0.25
-        marker1.color.r = r_func(weights[marker_id] / (weights[0]+1))
-        marker1.color.g = g_func(weights[marker_id] / (weights[0]+1))
-        marker1.color.b = b_func(weights[marker_id] / (weights[0]+1))
 
-        #rospy.loginfo("weight: %s max: %s ratio: %s",weights[marker_id], weights[0], weights[marker_id] / weights[0])
-        #rospy.loginfo("ID: %s RGB: %s %s %s", marker_id, marker1.color.r, marker1.color.g, marker1.color.b)
+        max_idx = weights.index(max(weights))
+        min_idx = weights.index(min(weights))
+        
+        marker1.color.r = r_func((weights[marker_id] - weights[min_idx]) / (weights[max_idx]- weights[min_idx] +1))
+        marker1.color.g = g_func((weights[marker_id] - weights[min_idx]) / (weights[max_idx]- weights[min_idx] +1))
+        marker1.color.b = b_func((weights[marker_id] - weights[min_idx]) / (weights[max_idx]- weights[min_idx] +1))
 
         marker1.pose.orientation = pose.orientation
         marker1.pose.position = pose.position
         marker1.points = [Point(0,0,0.01),Point(3,-1,0.01),Point(3,1,0.01)]
         
         markerArray.markers.append(marker1)
+
+    
+    # def create_marker(self,markerArray, marker_id, pose, weights):
+    #     marker1 = Marker()
+    #     marker1.id = marker_id 
+    #     marker1.header.frame_id = "/map"
+    #     marker1.type = marker1.TRIANGLE_LIST
+    #     marker1.action = marker1.ADD
+    #     marker1.scale.x = 1
+    #     marker1.scale.y = 1
+    #     marker1.scale.z = 2
+    #     marker1.color.a = 0.25
+    #     marker1.color.r = r_func(weights[marker_id] / (weights[0]+1))
+    #     marker1.color.g = g_func(weights[marker_id] / (weights[0]+1))
+    #     marker1.color.b = b_func(weights[marker_id] / (weights[0]+1))
+
+    #     #rospy.loginfo("weight: %s max: %s ratio: %s",weights[marker_id], weights[0], weights[marker_id] / weights[0])
+    #     #rospy.loginfo("ID: %s RGB: %s %s %s", marker_id, marker1.color.r, marker1.color.g, marker1.color.b)
+
+    #     marker1.pose.orientation = pose.orientation
+    #     marker1.pose.position = pose.position
+    #     marker1.points = [Point(0,0,0.01),Point(3,-1,0.01),Point(3,1,0.01)]
+        
+    #     markerArray.markers.append(marker1)
 
 
     def delete_markers(self):

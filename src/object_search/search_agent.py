@@ -13,7 +13,6 @@ from agent import Agent
 from search_methods import UninformedSearch_Random
 from search_methods import InformedSearch_SupportingPlanes
 from search_methods import InformedSearch_ViewEvaluation
-from search_methods import InformedSearch_QSR
 
 import actionlib
 from actionlib_msgs.msg import *
@@ -70,10 +69,8 @@ class SearchAgent(Agent):
             
         if search_method == 'support':
             self.search_method = InformedSearch_SupportingPlanes(float(inf_radius), poly)
-        elif search_method == 'bestview':
-            self.search_method = InformedSearch_ViewEvaluation(float(inf_radius), poly)
         elif search_method == 'qsr':
-            self.search_method = InformedSearch_QSR()
+            self.search_method = InformedSearch_ViewEvaluation(float(inf_radius), poly)
         else: # 'random'
             self.search_method = UninformedSearch_Random(float(inf_radius), poly)
 
