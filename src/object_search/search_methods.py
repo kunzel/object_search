@@ -14,6 +14,8 @@ from view_evaluation.srv import BestViews
 from view_evaluation.srv import BestViewsVisualiser
 
 from geometry_msgs.msg import Point
+from geometry_msgs.msg import PoseWithCovarianceStamped
+
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 
@@ -81,10 +83,21 @@ class InformedSearch_SupportingPlanes (smach.State):
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
 
+        # get current robot pose
+        self.first_call = True
+        rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.amcl_cb)
+
         # visualizing nav goals in RVIZ
         self.pubmarker = rospy.Publisher('supporting_planes_poses', MarkerArray)
         self.marker_len = 0
-            
+
+    def amcl_cb(self, data):
+
+        if self.first_call == True:
+            self.current_pose = data.pose.pose
+            rospy.loginfo("Got current robot pose: (%f,%f)" % (self.current_pose.position.x, self.current_pose.position.y))
+            self.first_call = False
+        
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
@@ -106,12 +119,10 @@ class InformedSearch_SupportingPlanes (smach.State):
                                                nav_goals_eval_resp.weights)
 
                 traj_number = 500
-                current_pose = 0 
-                vp_trajectory = plan_views(current_pose, viewpoints, traj_number, userdata.max_poses)
+                vp_trajectory = plan_views(self.current_pose, viewpoints, traj_number, userdata.max_poses)
 
                 vp_trajectory_weights = get_weights(vp_trajectory)
 
-                print(nav_goals_eval_resp.weights)
                 print(vp_trajectory_weights)
                 
                 self.delete_markers()            
@@ -200,10 +211,11 @@ class InformedSearch_SupportingPlanes (smach.State):
 
 class Viewpoint():
 
-    def __init__(self, pose, weight):
+    def __init__(self, pose, weight, prob):
 
         self.pose = pose
         self.weight = weight
+        self.prob = prob
 
     def get_pose(self):
 
@@ -213,27 +225,22 @@ class Viewpoint():
 
         return self.weight
 
+    def get_prob(self):
+
+        return self.prob
+    
 
 def plan_views(current_pose, viewpoints, traj_num=100, traj_len=10):
 
     costs = calc_costs(viewpoints)
 
     traj = sample_trajectories(viewpoints, traj_num, traj_len)
-    # traj = []
-    # t = []
-    # for i in range(len(viewpoints)):
-    #     if i < traj_len:
-    #         t.append(viewpoints[i])
-    #     else:
-    #         break
-
-    # traj.append(t)
     
-    traj_costs = evalaute_trajectories(traj, costs)
+    traj_costs = evalaute_trajectories(current_pose, traj, costs)
 
-    max_traj = get_max_traj(traj_costs, traj)
+    min_traj = get_min_traj(traj_costs, traj)
 
-    return max_traj 
+    return min_traj 
 
 def get_weights(viewpoints):
 
@@ -247,9 +254,11 @@ def get_weights(viewpoints):
 def create_viewpoints(pose, weight):
 
     viewpoints = []
+
+    wsum = sum(weight)
     
     for i in range(len(pose)):
-        vp = Viewpoint(pose[i],weight[i])
+        vp = Viewpoint(pose[i],weight[i],float(weight[i])/float(wsum))
         viewpoints.append(vp)
         
     return viewpoints
@@ -304,26 +313,37 @@ def sample_trajectories(viewpoints, number, length):
             
     return traj_lst
 
-def evalaute_trajectories(trajectories, costs):
+def evalaute_trajectories(current_pose, trajectories, costs):
 
     traj_costs = []
     
     for traj in trajectories:
         c = 0
+
+        p1 = current_pose 
+        p2 = traj[0].get_pose()
+
+        dist = math.sqrt( (p1.position.x - p2.position.x)**2 +  (p1.position.y - p2.position.y)**2 )   
+        c += dist
+
+        prob = 1
+        
         for i in range(len(traj)-1):
 
-            c += costs[traj[i]][traj[i+1]]
+            prob -= traj[i].get_prob()
+
+            c += costs[traj[i]][traj[i+1]] * prob
             
         traj_costs.append(c)
 
     return traj_costs
 
 
-def get_max_traj(traj_costs, trajectories):
+def get_min_traj(traj_costs, trajectories):
 
-    max_idx = traj_costs.index(min(traj_costs))
+    min_idx = traj_costs.index(min(traj_costs))
 
-    return trajectories[max_idx]
+    return trajectories[min_idx]
 
 
 def trapezoidal_shaped_func(a, b, c, d, x):
