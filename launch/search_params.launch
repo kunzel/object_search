@@ -28,5 +28,8 @@
   <param name="max_time" type="int" value="240"/>
   <param name="max_poses" type="int" value="10" />  
 
+  <param name="num_of_nav_goals" type="int" value="200" />  
+  <param name="num_of_trajectories" type="int" value="1000" />  
+
   
 </launch>

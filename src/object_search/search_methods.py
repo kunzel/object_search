@@ -63,6 +63,9 @@ class InformedSearch_SupportingPlanes (smach.State):
         self.inflation_radius = inflation_radius
         self.polygon = polygon
 
+        self.num_of_nav_goals =    int(rospy.get_param('num_of_nav_goals', '500'))
+        self.num_of_trajectories = int(rospy.get_param('num_of_trajectories', '500'))
+        
         self.agenda = []
         self.index = -1
         
@@ -107,7 +110,7 @@ class InformedSearch_SupportingPlanes (smach.State):
 
             if len(self.agenda) == 0:
             
-                nav_goals_resp = self.nav_goals(500, self.inflation_radius, self.polygon)
+                nav_goals_resp = self.nav_goals(self.num_of_nav_goals, self.inflation_radius, self.polygon)
 
 
                 nav_goals_eval_resp = self.nav_goals_eval(json.dumps(userdata.obj_desc),
@@ -118,8 +121,8 @@ class InformedSearch_SupportingPlanes (smach.State):
                 viewpoints = create_viewpoints(nav_goals_eval_resp.sorted_goals.poses,
                                                nav_goals_eval_resp.weights)
 
-                traj_number = 500
-                vp_trajectory = plan_views(self.current_pose, viewpoints, traj_number, userdata.max_poses)
+    
+                vp_trajectory = plan_views(self.current_pose, viewpoints, self.num_of_trajectories, userdata.max_poses)
 
                 vp_trajectory_weights = get_weights(vp_trajectory)
 
