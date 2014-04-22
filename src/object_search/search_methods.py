@@ -5,6 +5,7 @@ import smach_ros
 import json
 import math
 import random
+import copy
 
 from nav_goals_msgs.srv import NavGoals
 from nav_goals_msgs.srv import WeightedNavGoals
@@ -100,19 +101,36 @@ class InformedSearch_SupportingPlanes (smach.State):
                                                           json.dumps(userdata.obj_list),
                                                           nav_goals_resp.goals)
 
+                
+                viewpoints = create_viewpoints(nav_goals_eval_resp.sorted_goals.poses,
+                                               nav_goals_eval_resp.weights)
+
+                traj_number = 500
+                current_pose = 0 
+                vp_trajectory = plan_views(current_pose, viewpoints, traj_number, userdata.max_poses)
+
+                vp_trajectory_weights = get_weights(vp_trajectory)
+
+                print(nav_goals_eval_resp.weights)
+                print(vp_trajectory_weights)
+                
                 self.delete_markers()            
                 markerArray = MarkerArray()
             
-                for i in range(0,len(nav_goals_eval_resp.sorted_goals.poses)):
+#                for i in range(0,len(nav_goals_eval_resp.sorted_goals.poses)):
 
-                    self.agenda.append(nav_goals_eval_resp.sorted_goals.poses[i])
-                    
+#                    self.agenda.append(nav_goals_eval_resp.sorted_goals.poses[i])
+
+                for i in range(0,len(vp_trajectory)):
+
+                    self.agenda.append(vp_trajectory[i].get_pose())
                     if i < userdata.max_poses:
                         self.create_marker(markerArray,
                                            i,
-                                           nav_goals_eval_resp.sorted_goals.poses[i],
-                                           nav_goals_eval_resp.weights,
-                                           userdata.max_poses - 1)
+                                           vp_trajectory[i].get_pose(),
+                                           #nav_goals_eval_resp.sorted_goals.poses[i],
+                                           #nav_goals_eval_resp.weights,
+                                           vp_trajectory_weights)
 
 
                 self.marker_len =  len(markerArray.markers)
@@ -127,7 +145,9 @@ class InformedSearch_SupportingPlanes (smach.State):
                     return 'aborted'
                 
                 userdata.state = 'driving'
-                userdata.view_list = [[0.0,0.5],[0.5,0.5],[-0.5,0.5]]
+
+                userdata.view_list = [[0.0,0.5]] #,[0.5,0.5],[-0.5,0.5]]
+
                 userdata.pose_output = self.agenda[self.index]
                 rospy.loginfo("Next pose [%i]: (%s,%s)", self.index, self.agenda[self.index].position.x,self.agenda[self.index].position.y )
 
@@ -139,7 +159,7 @@ class InformedSearch_SupportingPlanes (smach.State):
         return 'succeeded'
 
 
-    def create_marker(self,markerArray, marker_id, pose, weights, max_idx):
+    def create_marker(self,markerArray, marker_id, pose, weights):
         marker1 = Marker()
         marker1.id = marker_id 
         marker1.header.frame_id = "/map"
@@ -149,9 +169,13 @@ class InformedSearch_SupportingPlanes (smach.State):
         marker1.scale.y = 1
         marker1.scale.z = 2
         marker1.color.a = 0.25
-        marker1.color.r = r_func((weights[marker_id] - weights[max_idx]) / (weights[0]- weights[max_idx] +1))
-        marker1.color.g = g_func((weights[marker_id] - weights[max_idx]) / (weights[0]- weights[max_idx] +1))
-        marker1.color.b = b_func((weights[marker_id] - weights[max_idx]) / (weights[0]- weights[max_idx] +1))
+
+        max_idx = weights.index(max(weights))
+        min_idx = weights.index(min(weights))
+        
+        marker1.color.r = r_func((weights[marker_id] - weights[min_idx]) / (weights[max_idx]- weights[min_idx] +1))
+        marker1.color.g = g_func((weights[marker_id] - weights[min_idx]) / (weights[max_idx]- weights[min_idx] +1))
+        marker1.color.b = b_func((weights[marker_id] - weights[min_idx]) / (weights[max_idx]- weights[min_idx] +1))
 
         #rospy.loginfo("weight: %s max: %s ratio: %s",weights[marker_id], weights[0], weights[marker_id] / weights[0])
         #rospy.loginfo("ID: %s RGB: %s %s %s", marker_id, marker1.color.r, marker1.color.g, marker1.color.b)
@@ -172,6 +196,134 @@ class InformedSearch_SupportingPlanes (smach.State):
             marker.action = marker.DELETE
             markerArray.markers.append(marker)
         self.pubmarker.publish(markerArray)
+
+
+class Viewpoint():
+
+    def __init__(self, pose, weight):
+
+        self.pose = pose
+        self.weight = weight
+
+    def get_pose(self):
+
+        return self.pose
+    
+    def get_weight(self):
+
+        return self.weight
+
+
+def plan_views(current_pose, viewpoints, traj_num=100, traj_len=10):
+
+    costs = calc_costs(viewpoints)
+
+    traj = sample_trajectories(viewpoints, traj_num, traj_len)
+    # traj = []
+    # t = []
+    # for i in range(len(viewpoints)):
+    #     if i < traj_len:
+    #         t.append(viewpoints[i])
+    #     else:
+    #         break
+
+    # traj.append(t)
+    
+    traj_costs = evalaute_trajectories(traj, costs)
+
+    max_traj = get_max_traj(traj_costs, traj)
+
+    return max_traj 
+
+def get_weights(viewpoints):
+
+    weights = []
+    
+    for vp in viewpoints:
+        weights.append(vp.get_weight())
+        
+    return weights
+
+def create_viewpoints(pose, weight):
+
+    viewpoints = []
+    
+    for i in range(len(pose)):
+        vp = Viewpoint(pose[i],weight[i])
+        viewpoints.append(vp)
+        
+    return viewpoints
+
+
+def calc_costs(viewpoints):
+
+    costs = dict() 
+
+    for i in range(len(viewpoints)):
+
+        costs2 = dict()
+
+        for j in range(len(viewpoints)):
+
+            if i != j:
+                p1 = viewpoints[i].get_pose()
+                p2 = viewpoints[j].get_pose()
+
+                dist = math.sqrt( (p1.position.x - p2.position.x)**2 +  (p1.position.y - p2.position.y)**2 )   
+                
+                costs2[viewpoints[j]] = dist
+
+        costs[viewpoints[i]] = costs2
+    
+    return costs
+
+def sample_trajectories(viewpoints, number, length):
+
+    pop0 = []
+    for i in range(len(viewpoints)):
+        if i < length:
+            pop0.extend([i for x in range(int(viewpoints[i].get_weight()))])
+        else:
+            break
+
+    traj_lst = []
+        
+    for i in range(number):
+
+        popn = copy.deepcopy(pop0)
+        
+        traj = []
+        for j in range(length):
+
+            idx = random.sample(popn,1)
+            popn = [x for x in popn if x != idx[0]]
+
+            traj.append(viewpoints[idx[0]])
+
+        traj_lst.append(traj)
+            
+    return traj_lst
+
+def evalaute_trajectories(trajectories, costs):
+
+    traj_costs = []
+    
+    for traj in trajectories:
+        c = 0
+        for i in range(len(traj)-1):
+
+            c += costs[traj[i]][traj[i+1]]
+            
+        traj_costs.append(c)
+
+    return traj_costs
+
+
+def get_max_traj(traj_costs, trajectories):
+
+    max_idx = traj_costs.index(min(traj_costs))
+
+    return trajectories[max_idx]
 
 
 def trapezoidal_shaped_func(a, b, c, d, x):
