@@ -2,7 +2,8 @@
   <!-- declare args to be passed in -->
   <arg name="obj" default='{"type" : "foo"}'/> 
   <arg name="method" default='support'/> 
-  <arg name="robot" default='real'/> 
+  <!-- <arg name="robot" default='real'/> -->
+  <arg name="robot" default='sim'/> 
   <arg name="map_frame" default='/projected_map'/> 
 
   <param name="obj_desc" type="string" value="$(arg obj)" />
