@@ -113,7 +113,7 @@ class InformedSearch_SupportingPlanes (smach.State):
                 nav_goals_resp = self.nav_goals(self.num_of_nav_goals, self.inflation_radius, self.polygon)
 
 
-                nav_goals_eval_resp = self.nav_goals_eval(json.dumps(userdata.obj_desc),
+                nav_goals_eval_resp = self.nav_goals_eval(userdata.obj_desc['type'],
                                                           json.dumps(userdata.obj_list),
                                                           nav_goals_resp.goals)
 

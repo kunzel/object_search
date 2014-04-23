@@ -4,6 +4,7 @@ project(object_search)
 find_package(roscpp REQUIRED)
 find_package(nav_goals_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(qsr_msgs REQUIRED)
   
  
 # find_package(octomap REQUIRED)
@@ -31,6 +32,7 @@ catkin_package(
 include_directories(include
   ${catkin_INCLUDE_DIRS}
   ${nav_goals_msgs_INCLUDE_DIRS}
+  ${qsr_msgs_INCLUDE_DIRS}
 )
 
 include_directories(${OCTOMAP_INCLUDE_DIRS})

@@ -7,6 +7,11 @@
 #include "visualization_msgs/Marker.h"
 #include <math.h> 
 
+#include <tf/transform_datatypes.h>
+#include <tf/LinearMath/Matrix3x3.h>
+#include <tf/LinearMath/Quaternion.h>
+#include <math.h>
+
 #include "octomap_msgs/GetOctomap.h"
 using octomap_msgs::GetOctomap;
 
@@ -14,11 +19,133 @@ using octomap_msgs::GetOctomap;
 #include <octomap/octomap.h>
 using namespace octomap;
 
+#include "qsr_msgs/QSRToGMM.h"
+#include "qsr_msgs/Gaussian2D.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
+using namespace qsr_msgs;
+
 #define ANGLE_MAX_DIFF (M_PI / 8)  
+
+
+int get_GMMs(std::string object, std::vector<std::string> qsr_landmark_type, std::vector< std::vector<float> > &landmark_gmm)
+{
+  ros::NodeHandle n;
+  std::string servname = "qsr_to_gmm";
+  ROS_INFO("Requesting GMMs from %s...", n.resolveName(servname).c_str());
+
+  for( std::vector<std::string>::iterator it = qsr_landmark_type.begin(); 
+       it!=qsr_landmark_type.end(); ++it)
+
+    {
+
+      QSRToGMM::Request req;
+      req.object = object;
+      req.landmark = *it;
+      QSRToGMM::Response res;
+      
+      if (ros::service::call(servname, req, res))
+        {
+          std::vector<float> gmm_param;
+          ROS_INFO("Got GMMs");
+          for(int i = 0; i != res.weight.size(); i++) 
+            {
+              
+              ROS_INFO("weight: %f", res.weight[i]);
+              gmm_param.push_back(res.weight[i]);
+              gmm_param.push_back(res.gaussian[i].mean[0]);
+              gmm_param.push_back(res.gaussian[i].mean[1]);
+              gmm_param.push_back(res.gaussian[i].covariance[0]);
+              gmm_param.push_back(res.gaussian[i].covariance[1]);
+              gmm_param.push_back(res.gaussian[i].covariance[2]);
+              gmm_param.push_back(res.gaussian[i].covariance[3]);
+            }
+
+          landmark_gmm.push_back(gmm_param);
+        }
+
+
+      else
+        {
+          ROS_ERROR("Failed to call service qsr_to_gmm");
+          return 1;
+        }
+    }
+
+  return 0;
+}
+
+
+int get_landmarks(std::vector<geometry_msgs::Pose> &qsr_landmark, std::vector<std::string> &qsr_landmark_type)
+{
+
+  static ros::NodeHandle n;
+  static ros::Publisher landmark_pub = n.advertise<geometry_msgs::PoseArray>( "landmarks", 0 );
+  geometry_msgs::PoseArray landmark_pose_array;
+
+  landmark_pose_array.header.frame_id = "map";
+  
+  ros::NodeHandle nh;
+  XmlRpc::XmlRpcValue lst;
+
+  int i = 0; 
+  
+  std::ostringstream os;
+  os << "/qsr_landmark/id" << i << "/pose";
+  std::string landmark = os.str();
+
+  ROS_INFO("Trying to get landmark: %s", landmark.c_str());
+  
+  while (nh.getParam(landmark.c_str(), lst))
+    {
+      ROS_INFO("Landmark id%i:", i);
+      //ROS_ASSERT(lst.getType() == XmlRpc::XmlRpcValue::TypeArray);
+      geometry_msgs::Pose p;
+
+      p.position.x = static_cast<double>(lst[0]);
+      p.position.y = static_cast<double>(lst[1]);
+      p.position.z = static_cast<double>(lst[2]);
+      p.orientation.w = static_cast<double>(lst[3]);
+      p.orientation.x = static_cast<double>(lst[4]);
+      p.orientation.y = static_cast<double>(lst[5]);
+      p.orientation.z = static_cast<double>(lst[6]);
+
+      ROS_INFO("Got landmark pose: (%f %f %f)", p.position.x, p.position.y, p.position.z);
+      qsr_landmark.push_back(p);
+      landmark_pose_array.poses.push_back(p);
+
+      std::ostringstream os_type;
+      os_type << "/qsr_landmark/id" << i << "/type";
+      std::string landmark_type = os_type.str();
+      std::string lm_type;
+      if (nh.getParam(landmark_type, lm_type))
+        {
+          ROS_INFO("Got landmark type: %s", lm_type.c_str());
+          qsr_landmark_type.push_back(lm_type);
+        }
+      else
+        {
+          ROS_ERROR("Could not get landmark type!");
+          qsr_landmark_type.push_back("");
+        }
+      
+      std::ostringstream os;
+      os << "/qsr_landmark/id" << ++i << "/pose";
+      landmark = os.str();
+      ROS_INFO("Trying to get landmark: %s", landmark.c_str());
+    }
+
+  landmark_pub.publish( landmark_pose_array );
+
+  ROS_INFO("Failed to get landmark: %s", landmark.c_str());
+  ROS_INFO("Number of landmarks found: %i", i);
+  
+  return 0;
+}
+
 
 struct WeightComparator
 {
@@ -366,16 +493,27 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
   static bool first_call = true;
   static OcTree* octree = NULL;
   static OcTree* sp_octree = NULL;
+
+  std::vector<geometry_msgs::Pose> landmark_pose;
+  std::vector<std::string> landmark_type;
+
+  std::vector< std::vector<float> > landmark_gmm;
+
  
   ROS_INFO("Started evaluation");
   ROS_INFO("request: obj_desc: %s, obj_list: %s", req.obj_desc.c_str(),  req.obj_list.c_str());
 
+  
+  get_landmarks(landmark_pose, landmark_type);
+
+  get_GMMs(req.obj_desc.c_str(), landmark_type, landmark_gmm);
+
   // Get Octomap and extract supporting planes (only once)
   //if (first_call)
   //  {
-      first_call = false;
-      octree = retrieve_octree();
-      sp_octree = extract_supporting_planes(octree);
+  first_call = false;
+  octree = retrieve_octree();
+  sp_octree = extract_supporting_planes(octree);
   //  }
   
   // Weight voxels according to distribution (uniform, QSR) 
@@ -388,7 +526,7 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
   for( std::vector<geometry_msgs::Pose>::const_iterator it = req.goals.poses.begin(); 
        it!=req.goals.poses.end(); ++it)
     {
-      pose_weights.push_back(0.001);
+      pose_weights.push_back(1.0);
     } 
 
   int max_weight = 0;
@@ -403,28 +541,103 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
 
           keys.push_back(key);
           coords.push_back(p3d);
-  
-          int weight = 1;
+          
+          double x = it.getX();
+          double y = it.getY();
           // if (weight > max_weight)
           //   max_weight = weight;
           // voxel_weights.push_back(weight);
 
           // Check for all poses whether current voxel is in frustum
-          int i = 0;
+          int idx = 0;
+          
           for( std::vector<geometry_msgs::Pose>::const_iterator it = req.goals.poses.begin(); 
                it!=req.goals.poses.end(); ++it) 
             {
               //if ( p3d.z() >= 0.4 )//IGNORE THE GROUND PLANE 
+
               if ( voxel_in_frustum(p3d,*it) )
                 {
-                  // QSR 
-                  //weight +=   10 * (normal_dist_2d(p3d.x(), p3d.y(), -1.0 , 0.2, 4.7 , 0.1));
-                  //weight +=   10 * (normal_dist_2d(p3d.x(), p3d.y(), 2.5 , 0.1, 4.7 , 0.2));
-                  //weight +=   10 * (normal_dist_2d(p3d.x(), p3d.y(), 1 , 0.1, -2.5 , 0.3));
+                  if (landmark_pose.size() == 0) 
+                    {
+                      pose_weights[idx] += 1.00;
+                      
+                    }
+                  else
+                    {
                   
-                  pose_weights[i] += weight;
+                      for (int l = 0; l < landmark_pose.size(); l++)
+                        {
+                          
+                          std::vector<float> gmm = landmark_gmm[l];
+                          
+                          for (int i = 0; i < gmm.size(); i = i + 7)
+                            {
+
+                              float gmm_weight = gmm[i];
+                              float mean_1 =  gmm[i + 1]; 
+                              float mean_2 =  gmm[i + 2];;
+                              float covar_1 = gmm[i + 3];
+                              float covar_2 = gmm[i + 4];
+                              float covar_3 = gmm[i + 6];
+                              float covar_4 = gmm[i + 6];
+                              
+                              
+                              // Rotate QSRs wrt landmark 
+                              tf::Quaternion q(landmark_pose[l].orientation.x,
+                                               landmark_pose[l].orientation.y,
+                                               landmark_pose[l].orientation.z,
+                                               landmark_pose[l].orientation.w);
+                              
+                              
+                              tf::Matrix3x3 rot(q);
+                              
+                              tf::Matrix3x3 inv_rot = rot.inverse();
+                              
+                              tf::Matrix3x3 sigma(covar_1, covar_2, 0.0, 
+                                                  covar_3, covar_4, 0.0,
+                                                  0.0, 0.0, 0.0);
+                              
+                              // rotate covariance matrix
+                              tf::Matrix3x3 rot_covar = (inv_rot * sigma) * rot;  
+                              
+                              tf::Vector3 vec1 = rot_covar.getRow(0);
+                              tf::Vector3 vec2 = rot_covar.getRow(1);
+                              
+                              float covar_1_r = vec1.getX();
+                              float covar_4_r = vec2.getY();
+                              
+                              tfScalar roll, pitch, yaw;
+                              rot.getRPY(roll, pitch, yaw);
+                              
+                              float mean_1_r = mean_1 * cos(yaw) - mean_2 * sin(yaw);
+                              float mean_2_r = mean_1 * sin(yaw) - mean_2 * cos(yaw);
+                          
+                              float mean_1_rt = mean_1_r + landmark_pose[l].position.x;
+                              float mean_2_rt = mean_2_r + landmark_pose[l].position.y;
+
+                              // ROS_INFO("LM(%i) LOCAL GMM(%i): (mean %f %f) (corvariance %f %f %f %f)",  l, i,
+                              //          qsr_mean_1[i],
+                              //          qsr_mean_2[i],
+                              //          qsr_covar_1[i],
+                              //          qsr_covar_2[i],
+                              //          qsr_covar_3[i],
+                              //          qsr_covar_4[i]);
+                              // ROS_INFO("LM(%i) GLOBAL GMM(%i): (mean %f %f) (corvariance %f %f)", l, i,
+                              //          mean_1_rt,
+                              //          mean_2_rt,
+                              //          covar_1_r,
+                              //          covar_4_r);
+                              
+                              
+                              pose_weights[idx] += (gmm_weight * (normal_dist_2d(x, y, 
+                                                                                 mean_1_rt , covar_1_r , 
+                                                                                 mean_2_rt , covar_4_r)));
+                            }
+                        }
+                    }
                 }
-              i++;
+              idx++;
             }
 
         }
@@ -471,6 +684,8 @@ int main(int argc, char **argv)
   ROS_INFO("Started nav_goals_evaluation service");
   ros::spin();
   ROS_INFO("Stopped nav_goals_evaluation service");
+  
+
 
   return 0;
 }
