@@ -630,9 +630,9 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
                               //          covar_4_r);
                               
                               
-                              pose_weights[idx] += (gmm_weight * (normal_dist_2d(x, y, 
-                                                                                 mean_1_rt , covar_1_r , 
-                                                                                 mean_2_rt , covar_4_r)));
+                              pose_weights[idx] += 0.1 + (gmm_weight * (normal_dist_2d(x, y, 
+                                                                                       mean_1_rt , covar_1_r , 
+                                                                                       mean_2_rt , covar_4_r)));
                             }
                         }
                     }
