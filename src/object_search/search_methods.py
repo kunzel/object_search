@@ -101,7 +101,23 @@ class InformedSearch_SupportingPlanes (smach.State):
             rospy.loginfo("Got current robot pose: (%f,%f)" % (self.current_pose.position.x, self.current_pose.position.y))
             self.first_call = False
         
+    def get_qsr_type(self, v4r_type):
 
+        if v4r_type == 'mug':
+            return 'Cup'
+        elif v4r_type == 'bottle':
+            return 'Bottle'
+        elif v4r_type == 'banana':
+            return 'Banana'
+        elif v4r_type == 'notebook':
+            return 'Laptop'
+        elif v4r_type == 'keyboard':
+            return 'Keyboard'
+        else:
+            return 'None'
+        
+                
+            
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
         
@@ -112,8 +128,9 @@ class InformedSearch_SupportingPlanes (smach.State):
             
                 nav_goals_resp = self.nav_goals(self.num_of_nav_goals, self.inflation_radius, self.polygon)
 
+                qsr_obj_type = self.get_qsr_type(userdata.obj_desc['type'])
 
-                nav_goals_eval_resp = self.nav_goals_eval(userdata.obj_desc['type'],
+                nav_goals_eval_resp = self.nav_goals_eval(qsr_obj_type,
                                                           json.dumps(userdata.obj_list),
                                                           nav_goals_resp.goals)
 

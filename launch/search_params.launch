@@ -1,6 +1,9 @@
 <launch>
   <!-- declare args to be passed in -->
-  <arg name="obj" default='{"type" : "Cup"}'/> 
+  <arg name="obj" default='{"type" : "mug"}'/> 
+  <!-- <arg name="obj" default='{"type" : "keyboard"}'/> -->
+  <!-- <arg name="obj" default='{"type" : "bottle"}'/>-->
+  <!-- <arg name="obj" default='{"type" : "banana"}'/>-->
   <!--<arg name="method" default='qsr'/> -->
   <arg name="method" default='support'/>
   <!-- <arg name="robot" default='real'/> -->
@@ -27,7 +30,7 @@
   <param name="min_objs" type="int" value="1" />
   <param name="max_objs" type="int" value="1" />
   <param name="max_time" type="int" value="240"/>
-  <param name="max_poses" type="int" value="15" />  
+  <param name="max_poses" type="int" value="10" />  
 
   <param name="num_of_nav_goals" type="int" value="200" />  
   <param name="num_of_trajectories" type="int" value="1000" />  

@@ -569,6 +569,9 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
                       for (int l = 0; l < landmark_pose.size(); l++)
                         {
                           
+                          std::string obj = req.obj_desc.c_str();
+                            
+                              
                           std::vector<float> gmm = landmark_gmm[l];
                           
                           for (int i = 0; i < gmm.size(); i = i + 7)
@@ -629,10 +632,24 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
                               //          covar_1_r,
                               //          covar_4_r);
                               
-                              
+                              // if (obj == "Keyboard" && landmark_type[l] == "PC")
+                              //   { 
+                              //     //pose_weights[idx] += 0.1;
+                              //     //ROS_INFO("Keyboard - PC"); 
+                              //     pose_weights[idx] += 0;
+                              //   }
+                              // else if (obj == "Bottle" && landmark_type[l] == "Monitor")
+                              //   { 
+                              //     //pose_weights[idx] += 0.1;
+                              //     //ROS_INFO("Bottle - Keyboard"); 
+                              //     pose_weights[idx] += 0;
+                              //   }
+                              // else 
+                              //   {
                               pose_weights[idx] += 0.1 + (gmm_weight * (normal_dist_2d(x, y, 
-                                                                                       mean_1_rt , covar_1_r , 
-                                                                                       mean_2_rt , covar_4_r)));
+                                                                                            mean_1_rt , covar_1_r , 
+                                                                                            mean_2_rt , covar_4_r)));
+                               //                                }
                             }
                         }
                     }
