@@ -53,7 +53,7 @@ class SearchAgent(Agent):
     def __init__(self):
 
         robot = rospy.get_param('robot', 'real')
-        inf_radius = rospy.get_param('inflation_radius', '0.7')
+        inf_radius = rospy.get_param('inflation_radius', '0.5')
         search_method = rospy.get_param('search_method','random')
 
         polygon = rospy.get_param('search_area',[])
@@ -96,6 +96,7 @@ class SearchAgent(Agent):
             smach.StateMachine.add('SearchMonitor', SearchMonitor(),                      
                                    transitions={ 'search_succeeded': 'succeeded',
                                                  'search_aborted':   'aborted',
+
                                                  'search_in_progress': 'SearchMethod', 
                                                  'preempted':'preempted'},
                                    remapping={'obj_desc':'sm_obj_desc',
@@ -426,8 +427,8 @@ class PerceiveReal (smach.State):
         self.active = False
         self.first_call = False
 
-        #rospy.Subscriber("/head_xtion/depth/points", PointCloud2, self.callback)
-        rospy.Subscriber("/camera/depth_registered/points", PointCloud2, self.callback)
+        rospy.Subscriber("/head_xtion/depth/points", PointCloud2, self.callback)
+        #rospy.Subscriber("/camera/depth_registered/points", PointCloud2, self.callback)
 
 
         self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
@@ -449,6 +450,7 @@ class PerceiveReal (smach.State):
             self.first_call = False
 
             self.pointcloud = data
+            rospy.loginfo("Got pointcloud!!!")
             
     
 
@@ -496,12 +498,18 @@ class PerceiveReal (smach.State):
 
             if len(objects) == 0:
                 rospy.loginfo("%i view: nothing perceived",i)
+
+                userdata.cloud = obj_rec_resp.cloud
+                userdata.bbox = obj_rec_resp.bbox
+                userdata.obj_list = self.obj_list
+
             else:
                 rospy.loginfo('%i view: found objects: %i', i, len(objects))
 
                 userdata.cloud = obj_rec_resp.cloud
                 userdata.bbox = obj_rec_resp.bbox
                 userdata.obj_list = self.obj_list
+
 
                 userdata.state = 'image_analysis'
 
@@ -521,6 +529,9 @@ class PerceiveReal (smach.State):
                     
                     self.obj_list.append(obj_desc)
 
+                rospy.sleep(3)
+
+
             i = i + 1
             
         
@@ -528,7 +539,7 @@ class PerceiveReal (smach.State):
         joint_state = JointState()
         joint_state.header.frame_id = 'tessdaf'
         joint_state.name = ['pan', 'tilt']
-        joint_state.position = [float(0.0),float(0.5)]
+        joint_state.position = [float(0.0),float(0.0)]
         joint_state.velocity = [float(1.0),float(1.0)]
         joint_state.effort = [float(1.0),float(1.0)]
             
