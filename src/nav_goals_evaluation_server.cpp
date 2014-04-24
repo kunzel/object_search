@@ -286,9 +286,24 @@ double normal_dist_2d(double x, double y, double mean1, double var1, double mean
 
 OcTree* retrieve_octree()
 {
+  //ros::NodeHandle nh;
+ 
+  OcTree* octree;
+  
+  // std::string map_file;
+  // if (nh.getParam("octomap_file", map_file))
+  //   {
+  //     ROS_INFO("Load octomap from file: %s", map_file.c_str());
+
+  //     octree = new OcTree(map_file);
+  //   }
+  // else
+  //   {
+  
   ros::NodeHandle n;
   std::string servname = "octomap_binary";
   ROS_INFO("Requesting the map from %s...", n.resolveName(servname).c_str());
+  
   GetOctomap::Request req;
   GetOctomap::Response resp;
   while(n.ok() && !ros::service::call(servname, req, resp))
@@ -297,8 +312,9 @@ OcTree* retrieve_octree()
       usleep(1000000);
     }
  
-  OcTree* octree = octomap_msgs::binaryMsgToMap(resp.map);
-
+  
+  octree = octomap_msgs::binaryMsgToMap(resp.map);
+  
   if (octree){
     ROS_INFO("Map received (%zu nodes, %f m res)", octree->size(), octree->getResolution());
     return octree;
@@ -646,9 +662,9 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
                               //   }
                               // else 
                               //   {
-                              pose_weights[idx] += 0.1 + (gmm_weight * (normal_dist_2d(x, y, 
-                                                                                            mean_1_rt , covar_1_r , 
-                                                                                            mean_2_rt , covar_4_r)));
+                              pose_weights[idx] +=  0.01 + (gmm_weight * (normal_dist_2d(x, y, 
+                                                                                         mean_1_rt , covar_1_r , 
+                                                                                         mean_2_rt , covar_4_r)));
                                //                                }
                             }
                         }
@@ -680,7 +696,8 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
   for( std::vector<int>::const_iterator it = pose_indices.begin(); 
        it!=pose_indices.end(); ++it) 
     {
-      ROS_INFO("%i POSE (%f,%f), WEIGHT %f", i, req.goals.poses[(*it)].position.x, req.goals.poses[(*it)].position.y, pose_weights[i]);
+      if (i < 10)
+        ROS_INFO("%i POSE (%f,%f), WEIGHT %f", i, req.goals.poses[(*it)].position.x, req.goals.poses[(*it)].position.y, pose_weights[i]);
       res.sorted_goals.poses.push_back(req.goals.poses[(*it)]);
       i++;
     }
