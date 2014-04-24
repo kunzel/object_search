@@ -148,11 +148,12 @@ class SearchAgent(Agent):
         
         return self.sm
 
-    def set_sm_userdata(self):
+    def set_sm_userdata(self, obj_desc):
         """Set userdata for state machine."""
         rospy.loginfo('Getting parameters from server')
 
-        obj_desc = rospy.get_param('obj_desc','{"type" : "Bar"}')
+        #obj_desc = rospy.get_param('obj_desc','{"type" : "Bar"}')
+
         self.sm.userdata.sm_obj_desc  = json.loads(obj_desc)
 
         self.sm.userdata.state = 'pose_selection' 
