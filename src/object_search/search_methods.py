@@ -313,6 +313,9 @@ def sample_trajectories(viewpoints, number, length):
         #else:
          #   break
 
+    if len(pop0) < length:
+        return []
+    
     traj_lst = []
         
     for i in range(number):
@@ -359,6 +362,9 @@ def evalaute_trajectories(current_pose, trajectories, costs):
 
 def get_min_traj(traj_costs, trajectories):
 
+    if len(trajectories) == 0:
+        return []
+    
     min_idx = traj_costs.index(min(traj_costs))
 
     return trajectories[min_idx]
