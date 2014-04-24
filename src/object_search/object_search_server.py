@@ -64,11 +64,21 @@ class ObjectSearchServer(object):
             # get current pose form state machine
             self._feedback = object_search_action.msg.SearchFeedback()
             self._feedback.state = userdata.state
-            if userdata.state == 'driving':
+
+            
+            if userdata.state == 'driving' and self.send_pose == False: 
                 self._feedback.goal_pose = userdata.sm_pose_data
-            elif userdata.state == 'image_analysis':
+                self.send_clouds = False
+                self.send_pose = True
+                self._as.publish_feedback(self._feedback)
+            elif userdata.state == 'image_analysis' and self.send_clouds == False:
                 self._feedback.objs = userdata.cloud
-            self._as.publish_feedback(self._feedback)
+                self._feedback.labels = userdata.labels
+                self.send_clouds = True
+                self._as.publish_feedback(self._feedback)
+            elif userdata.state != 'image_analysis' and userdata.state != 'driving':
+                self.send_pose = False
+                self._as.publish_feedback(self._feedback)
 
             r.sleep()
 

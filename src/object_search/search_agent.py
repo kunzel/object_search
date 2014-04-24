@@ -422,7 +422,7 @@ class PerceiveReal (smach.State):
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
                              input_keys=['view_list'],
-                             output_keys=['state','obj_list','bbox','cloud'])
+                             output_keys=['state','obj_list','bbox','cloud','labels'])
 
         self.obj_list = []
         self.active = False
@@ -511,10 +511,14 @@ class PerceiveReal (smach.State):
                 userdata.bbox = obj_rec_resp.bbox
                 userdata.obj_list = self.obj_list
 
+                #vis_cloud = obj_rec_resp.cloud[0]
 
-                userdata.state = 'image_analysis'
+                #self.cluster_vis.publish(vis_cloud)
+
+
 
                 
+                labels = []
                 for j in range(len(objects)):
 
                     obj = objects[j]
@@ -526,11 +530,16 @@ class PerceiveReal (smach.State):
 
                     obj_desc['type'] = obj.class_type[max_idx].data.strip('/')
 
+                    labels.append(obj_desc['type'])
+                    
                     rospy.loginfo('Object: %s', obj_desc['type'])
                     
                     self.obj_list.append(obj_desc)
 
-                rospy.sleep(3)
+                userdata.labels = labels
+                userdata.state = 'image_analysis'
+                
+                rospy.sleep(20)
 
 
             i = i + 1
