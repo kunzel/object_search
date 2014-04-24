@@ -1,13 +1,13 @@
 <launch>
   <!-- declare args to be passed in -->
-  <arg name="obj" default='{"type" : "mug"}'/> 
+  <arg name="obj" default='{"type" : "keyboard"}'/> 
   <!-- <arg name="obj" default='{"type" : "keyboard"}'/> -->
   <!-- <arg name="obj" default='{"type" : "bottle"}'/>-->
   <!-- <arg name="obj" default='{"type" : "banana"}'/>-->
   <!--<arg name="method" default='qsr'/> -->
   <arg name="method" default='support'/>
-  <!-- <arg name="robot" default='sim'/> -->
-  <arg name="robot" default='real'/> 
+  <!-- <arg name="robot" default='real'/> -->
+  <arg name="robot" default='sim'/> 
   <arg name="map_frame" default='/projected_map'/> 
   <!-- <arg name="map_frame" default='/map'/> -->
 
@@ -33,7 +33,7 @@
   <!-- <rosparam param="search_area">[[0.0,0.0],[-2.0,0.0],[0.0,-3.5],[-2.0,-3.5]]</rosparam> -->
 
   <!-- real bham lab obj search demo-->
-  <rosparam param="search_area">[[11.0,-5.0],[8.6,-0.4],[-5.3,-5.2],[-3.4,-10.0]]</rosparam> 
+  <!-- <rosparam param="search_area">[[11.0,-5.0],[8.6,-0.4],[-5.3,-5.2],[-3.4,-10.0]]</rosparam> -->
 
 
   <param name="min_objs" type="int" value="1" />
@@ -41,10 +41,10 @@
   <param name="max_time" type="int" value="240"/>
   <param name="max_poses" type="int" value="10" />  
 
-  <param name="num_of_nav_goals" type="int" value="1000" />  
+  <param name="num_of_nav_goals" type="int" value="300" />  
   <param name="num_of_trajectories" type="int" value="1000" />  
 
-  <param name="inflation_radius" type="double" value="0.3" />  
+  <param name="inflation_radius" type="double" value="0.5" />  
 
   <!-- <param name="octomap_file" type="string" value="/home/lars/catkin_ws/srs/strands_morse/bham/maps/cs_lg_obj_search_octomap.bt" />  -->
   
