@@ -30,6 +30,7 @@ using namespace qsr_msgs;
 
 #define ANGLE_MAX_DIFF (M_PI / 8)  
 
+#define SUPPORTING_PLANE_WEIGHT 0.01
 
 int get_GMMs(std::string object, std::vector<std::string> qsr_landmark_type, std::vector< std::vector<float> > &landmark_gmm)
 {
@@ -589,7 +590,10 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
                             
                               
                           std::vector<float> gmm = landmark_gmm[l];
+
                           
+                          pose_weights[idx] += SUPPORTING_PLANE_WEIGHT;
+
                           for (int i = 0; i < gmm.size(); i = i + 7)
                             {
 
@@ -648,24 +652,41 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
                               //          covar_1_r,
                               //          covar_4_r);
                               
-                              // if (obj == "Keyboard" && landmark_type[l] == "PC")
-                              //   { 
-                              //     //pose_weights[idx] += 0.1;
-                              //     //ROS_INFO("Keyboard - PC"); 
-                              //     pose_weights[idx] += 0;
-                              //   }
-                              // else if (obj == "Bottle" && landmark_type[l] == "Monitor")
-                              //   { 
-                              //     //pose_weights[idx] += 0.1;
-                              //     //ROS_INFO("Bottle - Keyboard"); 
-                              //     pose_weights[idx] += 0;
-                              //   }
-                              // else 
-                              //   {
-                              pose_weights[idx] +=  0.01 + (gmm_weight * (normal_dist_2d(x, y, 
-                                                                                         mean_1_rt , covar_1_r , 
-                                                                                         mean_2_rt , covar_4_r)));
-                               //                                }
+                              // BEGIN DEMO TWEAKS
+                              
+                              // ignore object at landmark
+                              if (obj == "Keyboard" && landmark_type[l] == "PC")
+                                { 
+                                  pose_weights[idx] += 0.0 ;
+                                }
+                              // ignore object at landmark
+                              else if (obj == "Bottle" && landmark_type[l] == "Monitor")
+                                { 
+                                  pose_weights[idx] +=  0.0 ;
+                                }
+                              // prefer object at landmark (boost relevance of bistro tables)
+                              else if ((obj == "Cup") && landmark_type[l] == "PC")
+                                { 
+                                  pose_weights[idx] +=  20 * gmm_weight * (normal_dist_2d(x, y, 
+                                                                                           mean_1_rt , covar_1_r , 
+                                                                                           mean_2_rt , covar_4_r));
+                                }
+                              
+                              // prefer object at landmark
+                              else if ((obj == "Bottle") && landmark_type[l] == "PC")
+                                { 
+                                  pose_weights[idx] +=  1000 * gmm_weight * (normal_dist_2d(x, y, 
+                                                                                           mean_1_rt , covar_1_r , 
+                                                                                           mean_2_rt , covar_4_r));
+                                }
+                              // END DEMO TWEAKS
+                              else 
+                                {
+                                  pose_weights[idx] +=  gmm_weight * (normal_dist_2d(x, y, 
+                                                                                     mean_1_rt , covar_1_r , 
+                                                                                     mean_2_rt , covar_4_r));
+                                }
+
                             }
                         }
                     }
