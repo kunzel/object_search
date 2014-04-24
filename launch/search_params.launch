@@ -9,6 +9,8 @@
   <!-- <arg name="robot" default='real'/> -->
   <arg name="robot" default='sim'/> 
   <arg name="map_frame" default='/projected_map'/> 
+  <!-- <arg name="map_frame" default='/map'/> -->
+
 
   <param name="obj_desc" type="string" value="$(arg obj)" />
   <param name="search_method" type="string" value="$(arg method)" />    
@@ -21,7 +23,9 @@
   <!--<rosparam param="search_area">[[-2.0,4.0],[4.0,4.0],[4.0,-6.0],[-2.0,-6.0]]</rosparam>-->
   
   <!-- simulated lab -->
-  <rosparam param="search_area">[[2.0,-8.0],[5.0,-8.0],[5.0,2.0],[2.0,2.0]]</rosparam>
+  <!-- <rosparam param="search_area">[[2.0,-8.0],[5.0,-8.0],[5.0,2.0],[2.0,2.0]]</rosparam> -->
+  <!-- simulated lab and outside -->
+  <rosparam param="search_area">[[-5.5,-12.5],[6.0,-12.5],[6.0,3.5],[-5.5,3.5]]</rosparam>
  
   <!-- real bham lab -->
   <!-- <rosparam param="search_area">[[0.0,0.0],[-2.0,0.0],[0.0,-3.5],[-2.0,-3.5]]</rosparam> -->
@@ -32,8 +36,9 @@
   <param name="max_time" type="int" value="240"/>
   <param name="max_poses" type="int" value="10" />  
 
-  <param name="num_of_nav_goals" type="int" value="200" />  
+  <param name="num_of_nav_goals" type="int" value="1000" />  
   <param name="num_of_trajectories" type="int" value="1000" />  
 
+  <!-- <param name="octomap_file" type="string" value="/home/lars/catkin_ws/srs/strands_morse/bham/maps/cs_lg_obj_search_octomap.bt" />  -->
   
 </launch>
