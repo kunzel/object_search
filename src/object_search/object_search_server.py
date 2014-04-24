@@ -37,7 +37,7 @@ class ObjectSearchServer(object):
         self.agent = SearchAgent()
 
         # set userdata: object type, ...
-        self.agent.set_sm_userdata()        
+        self.agent.set_sm_userdata(goal.obj_desc)        
         # run agent's state machine with or without introspection server
         # outcome = agent.execute_sm()
 
