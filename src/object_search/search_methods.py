@@ -308,10 +308,10 @@ def sample_trajectories(viewpoints, number, length):
 
     pop0 = []
     for i in range(len(viewpoints)):
-        if i < length:
-            pop0.extend([i for x in range(int(viewpoints[i].get_weight()))])
-        else:
-            break
+        #if i < length:
+        pop0.extend([i for x in range(int(viewpoints[i].get_weight()) - 1 ) ])
+        #else:
+         #   break
 
     traj_lst = []
         
