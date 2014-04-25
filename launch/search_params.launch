@@ -33,7 +33,7 @@
   <!-- <rosparam param="search_area">[[0.0,0.0],[-2.0,0.0],[0.0,-3.5],[-2.0,-3.5]]</rosparam> -->
 
   <!-- real bham lab obj search demo-->
-  <rosparam param="search_area">[[-4.6,-10.0],[4.0,-7.0],[1.0,3.9],[-7.4,0.0]]</rosparam> 
+  <rosparam param="search_area">[[-4.6,-10.0],[4.0,-7.0],[1.0,3.9],[-8.0,3.4]]</rosparam> 
 
 
   <param name="min_objs" type="int" value="1" />
@@ -41,10 +41,10 @@
   <param name="max_time" type="int" value="240"/>
   <param name="max_poses" type="int" value="10" />  
 
-  <param name="num_of_nav_goals" type="int" value="300" />  
+  <param name="num_of_nav_goals" type="int" value="500" />  
   <param name="num_of_trajectories" type="int" value="1000" />  
 
-  <param name="inflation_radius" type="double" value="0.5" />  
+  <param name="inflation_radius" type="double" value="0.35" />  
 
   <!-- <param name="octomap_file" type="string" value="/home/lars/catkin_ws/srs/strands_morse/bham/maps/cs_lg_obj_search_octomap.bt" />  -->
   

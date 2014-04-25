@@ -193,6 +193,8 @@ class SearchMonitor (smach.State):
         self.first_call = True
         self.found_objs = dict()
 
+        self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
+
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
         # rospy.loginfo('Searching for %s' % obj )
@@ -297,6 +299,15 @@ class SearchMonitor (smach.State):
 
             rospy.loginfo('searched poses: %s', self.count - 1)
             return 'search_aborted'
+
+        # back to original position
+        joint_state = JointState()
+        joint_state.header.frame_id = 'tessdaf'
+        joint_state.name = ['pan', 'tilt']
+        joint_state.position = [float(0.0),float(0.0)]
+        joint_state.velocity = [float(1.0),float(1.0)]
+        joint_state.effort = [float(1.0),float(1.0)]
+        self.ptu_cmd.publish(joint_state)
 
         
         return 'search_in_progress'
@@ -431,6 +442,7 @@ class PerceiveReal (smach.State):
         rospy.Subscriber("/head_xtion/depth/points", PointCloud2, self.callback)
         #rospy.Subscriber("/camera/depth_registered/points", PointCloud2, self.callback)
 
+        
 
         self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
 
@@ -539,21 +551,20 @@ class PerceiveReal (smach.State):
                 userdata.labels = labels
                 userdata.state = 'image_analysis'
                 
-                rospy.sleep(20)
+                rospy.sleep(10)
 
 
             i = i + 1
             
         
         # back to original position
-        joint_state = JointState()
-        joint_state.header.frame_id = 'tessdaf'
-        joint_state.name = ['pan', 'tilt']
-        joint_state.position = [float(0.0),float(0.0)]
-        joint_state.velocity = [float(1.0),float(1.0)]
-        joint_state.effort = [float(1.0),float(1.0)]
-            
-        self.ptu_cmd.publish(joint_state)
+        #joint_state = JointState()
+        #joint_state.header.frame_id = 'tessdaf'
+        #joint_state.name = ['pan', 'tilt']
+        #joint_state.position = [float(0.0),float(0.0)]
+        #joint_state.velocity = [float(1.0),float(1.0)]
+        #joint_state.effort = [float(1.0),float(1.0)]
+        #self.ptu_cmd.publish(joint_state)
 
         return 'succeeded'
 

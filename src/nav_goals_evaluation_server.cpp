@@ -396,11 +396,11 @@ bool voxel_in_frustum(point3d p3d, geometry_msgs::Pose pose)
   float oy = pose.position.y;
 
   // Frustum
-  float aax = ox + 3;
-  float aay = oy - 1;
+  float aax = ox + 2.0;
+  float aay = oy - 0.75;
 
-  float bbx = ox + 3;
-  float bby = oy + 1;
+  float bbx = ox + 2.0;
+  float bby = oy + 0.75;
   
   float ax = cos(theta) * (aax-ox) - sin(theta) * (aay-oy) + ox;
   float ay = sin(theta) * (aax-ox) + cos(theta) * (aay-oy) + oy; 
@@ -665,20 +665,20 @@ bool evaluate(nav_goals_msgs::WeightedNavGoals::Request  &req,
                                   pose_weights[idx] +=  0.0 ;
                                 }
                               // prefer object at landmark (boost relevance of bistro tables)
-                              else if ((obj == "Cup") && landmark_type[l] == "PC")
-                                { 
-                                  pose_weights[idx] +=  20 * gmm_weight * (normal_dist_2d(x, y, 
-                                                                                           mean_1_rt , covar_1_r , 
-                                                                                           mean_2_rt , covar_4_r));
-                                }
+                              // else if ((obj == "Cup") && landmark_type[l] == "PC")
+                              //   { 
+                              //     pose_weights[idx] +=  20 * gmm_weight * (normal_dist_2d(x, y, 
+                              //                                                              mean_1_rt , covar_1_r , 
+                              //                                                              mean_2_rt , covar_4_r));
+                              //   }
                               
                               // prefer object at landmark
-                              else if ((obj == "Bottle") && landmark_type[l] == "PC")
+                              else if ((obj == "Bottle") && landmark_type[l] == "Cup")
                                 { 
-                                  pose_weights[idx] +=  1000 * gmm_weight * (normal_dist_2d(x, y, 
+                                  pose_weights[idx] +=  10 * gmm_weight * (normal_dist_2d(x, y, 
                                                                                            mean_1_rt , covar_1_r , 
                                                                                            mean_2_rt , covar_4_r));
-                                }
+                              }
                               // END DEMO TWEAKS
                               else 
                                 {

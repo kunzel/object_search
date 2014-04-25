@@ -211,7 +211,7 @@ class InformedSearch_SupportingPlanes (smach.State):
 
         marker1.pose.orientation = pose.orientation
         marker1.pose.position = pose.position
-        marker1.points = [Point(0,0,0.01),Point(3,-1,0.01),Point(3,1,0.01)]
+        marker1.points = [Point(0,0,0.01),Point(2,-0.75,0.01),Point(2,0.75,0.01)]
         
         markerArray.markers.append(marker1)
 
