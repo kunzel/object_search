@@ -8,6 +8,8 @@ import getopt
 import random
 import json
 
+from ros_mary_tts.srv import ros_mary
+
 from agent import Agent
 
 from search_methods import UninformedSearch_Random
@@ -195,6 +197,14 @@ class SearchMonitor (smach.State):
 
         self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
 
+        rospy.wait_for_service('/ros_mary')
+
+        try:
+            self.mary = rospy.ServiceProxy('/ros_mary', ros_mary )
+        except rospy.ServiceException, e:
+            rospy.logerr("Service call failed: %s" % e)
+
+
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
         # rospy.loginfo('Searching for %s' % obj )
@@ -223,6 +233,12 @@ class SearchMonitor (smach.State):
             if len(self.found_objs) >= userdata.min_objs:
                 userdata.obj_found = True
 
+                rospy.loginfo('call ros_mary')
+                try:
+                    mary_resp = self.mary("Object located!")
+                except rospy.ServiceException, e:
+                    rospy.logerr("Service call failed: %s" % e)
+                
                 obj_descs = []
                 for key in self.found_objs:
                     rospy.loginfo('Found obj: %s', self.found_objs[key])
@@ -263,6 +279,13 @@ class SearchMonitor (smach.State):
         # stop search if we've found enough objs
         if len(self.found_objs) >= userdata.max_objs:
             userdata.obj_found = True
+
+            rospy.loginfo('call ros_mary')
+            try:
+                mary_resp = self.mary("Object located!")
+            except rospy.ServiceException, e:
+                rospy.logerr("Service call failed: %s" % e)
+                
 
             obj_descs = []
             for key in self.found_objs:
@@ -551,7 +574,7 @@ class PerceiveReal (smach.State):
                 userdata.labels = labels
                 userdata.state = 'image_analysis'
                 
-                rospy.sleep(10)
+                rospy.sleep(20)
 
 
             i = i + 1
