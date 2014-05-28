@@ -1,4 +1,9 @@
 <launch>
-  <node name="nav_goals_generator" pkg="nav_goals_generator" type="nav_goals_generator.py" output="screen"/>
+  <arg name="map" default="/projected_map"/>
+
+  <include file="$(find nav_goals_generator)/launch/nav_goals_generator.launch">
+    <arg name="map_frame" value="$(arg map)"/>
+  </include>
+
   <node name="nav_goals_evaluation_server" pkg="object_search" type="nav_goals_evaluation_server" output="screen"/>
 </launch>
