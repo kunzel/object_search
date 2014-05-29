@@ -29,6 +29,13 @@ Getting Started (in simulation)
                                           
         $ roslaunch --wait strands_morse bham_cs_morse.launch env:=cs_lg_obj_search
         
+        
+      Add an object in the cs_lg_obj_search.py file as follows:
+      
+        cup = PassiveObject('strands_sim/robots/strands_objects.blend','cup')
+        cup.properties(Object = True, Type = 'Cup')
+        cup.translate(0,0,1.0)
+
       Launch the 2D robot navigation                 
         
         $ roslaunch --wait strands_morse bham_cs_nav2d.launch
