@@ -348,7 +348,7 @@ class PerceiveSim (smach.State):
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
                              input_keys=['view_list'],
-                             output_keys=['state','obj_list','cloud'])
+                             output_keys=['state','obj_list','cloud','labels'])
 
         rospy.Subscriber("semcam", String, self.callback)
         self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
@@ -420,6 +420,7 @@ class PerceiveSim (smach.State):
             self.active = False
 
             userdata.cloud = []
+            userdata.labels = []
             userdata.state = 'image_analysis'
             
             rospy.sleep(3)
