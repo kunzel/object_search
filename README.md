@@ -52,7 +52,7 @@ Getting Started (in simulation)
       
         $ rosrun object_search object_search_server.py
         
-      Start the search using an action client where `<object>` is the name of the object the robot is looking for, e.g. mug: 
+      Start the search using an action client where `<object>` is the name of the object the robot is looking for, e.g. Cup: 
       
         $ rosrun object_search object_search_client.py <object>
         
