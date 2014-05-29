@@ -1,0 +1,12 @@
+<launch>
+  <arg name="map" default="/projected_map"/>
+
+  <include file="$(find object_search)/launch/search_params.launch"/>
+
+  <include file="$(find object_search)/launch/nav_goals.launch">
+    <arg name="map" value="$(arg map)"/>
+  </include>
+
+  <include file="$(find ros_mary_tts)/launch/ros_mary.launch"/>
+  
+</launch>
